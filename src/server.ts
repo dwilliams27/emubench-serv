@@ -3,6 +3,9 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { Request, Response } from 'express';
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { directionToStickPosition } from "./utils";
+import { connected } from "process";
+import { sendControllerInput } from "./ipc";
 
 /**
  * TODO: Move off sse
@@ -22,24 +25,24 @@ export class DolphinMcpServer {
 
   setupBasicTools() {
     this.server.tool(
-      'pressButton',
-      'Press a button on the gamecube controller',
+      'sendControllerInput',
+      'Press buttons, move sticks, or press triggers on the gamecube controller',
       {
         actions: z.object({
           buttons: z.object({
-            a: z.boolean().optional().describe("Press (true) or release (false) the A button"),
-            b: z.boolean().optional().describe("Press (true) or release (false) the B button"),
-            x: z.boolean().optional().describe("Press (true) or release (false) the X button"),
-            y: z.boolean().optional().describe("Press (true) or release (false) the Y button"),
-            z: z.boolean().optional().describe("Press (true) or release (false) the Z button"),
-            start: z.boolean().optional().describe("Press (true) or release (false) the Start button"),
-            up: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Up button"),
-            down: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Down button"),
-            left: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Left button"),
-            right: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Right button"),
-            l: z.boolean().optional().describe("Press (true) or release (false) the L shoulder button"),
-            r: z.boolean().optional().describe("Press (true) or release (false) the R shoulder button"),
-          }).optional().describe("Specify button states (true for pressed, false for released). Omit buttons to leave them unchanged."),
+            a: z.boolean().optional().describe("Press/release the A button"),
+            b: z.boolean().optional().describe("Press/release the B button"),
+            x: z.boolean().optional().describe("Press/release the X button"),
+            y: z.boolean().optional().describe("Press/release the Y button"),
+            z: z.boolean().optional().describe("Press/release the Z button"),
+            start: z.boolean().optional().describe("Press/release the Start button"),
+            up: z.boolean().optional().describe("Press/release the D-Pad Up button"),
+            down: z.boolean().optional().describe("Press/release the D-Pad Down button"),
+            left: z.boolean().optional().describe("Press/release the D-Pad Left button"),
+            right: z.boolean().optional().describe("Press/release the D-Pad Right button"),
+            l: z.boolean().optional().describe("Press/release the L shoulder button"),
+            r: z.boolean().optional().describe("Press/release the R shoulder button"),
+          }).optional().describe("Specify button states (true=pressed, false=released). Omit buttons to leave them unchanged."),
 
           mainStick: z.object({
             direction: z.enum(["up", "right", "down", "left"]).optional().describe("The direction to move the stick in (up, right, down, left)."),
@@ -57,8 +60,20 @@ export class DolphinMcpServer {
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
         duration: z.enum(["short", "medium", "long"]).optional().describe("How long to press for; short (5 frames), medium (10 frames), long (20 frames)").default("short"),
       },
-      async ({ actions }): Promise<CallToolResult> => {
+      async ({ actions, duration }): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
+
+        const ipcRequest = {
+          connected: true,
+          ...(actions.buttons ? { buttons: actions.buttons } : {}),
+          ...(actions.mainStick?.direction ? { mainStick: directionToStickPosition(actions.mainStick?.direction) } : {}),
+          ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
+          ...(actions.triggers ? { triggers: actions.triggers } : {}),
+          frames: duration === "short" ? 5 : duration === "medium" ? 10 : 20,
+        }
+
+        await sendControllerInput(ipcRequest);
+
         return {
           content: [
             {

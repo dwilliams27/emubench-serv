@@ -25,9 +25,9 @@ interface TriggerValues {
 
 export interface IPCControllerInputRequest {
   connected: boolean;
-  buttons: Buttons;
-  mainStick: StickPosition;
-  cStick: StickPosition;
-  triggers: TriggerValues;
+  buttons?: Partial<Buttons>;
+  mainStick?: StickPosition;
+  cStick?: StickPosition;
+  triggers?: Partial<TriggerValues>;
   frames: number;
 }
