@@ -5,7 +5,7 @@ import { Request, Response } from 'express';
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { directionToStickPosition } from "./utils";
 import { connected } from "process";
-import { sendControllerInput } from "./ipc";
+import { ipcGetScreenshot, ipcPostControllerInput } from "./ipc";
 
 /**
  * TODO: Move off sse
@@ -72,7 +72,7 @@ export class DolphinMcpServer {
           frames: duration === "short" ? 5 : duration === "medium" ? 10 : 20,
         }
 
-        await sendControllerInput(ipcRequest);
+        await ipcPostControllerInput(ipcRequest);
 
         return {
           content: [
@@ -80,6 +80,34 @@ export class DolphinMcpServer {
               type: 'text',
               text: `Done!`,
             }
+          ],
+        };
+      }
+    );
+
+    this.server.tool(
+      'viewScreen',
+      'Gives a screenshot of the game',
+      {},
+      async (): Promise<CallToolResult> => {
+        const rawData = await ipcGetScreenshot();
+        if (!rawData) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "Failed to get screenshot",
+              }
+            ],
+          };
+        }
+        return {
+          content: [
+            {
+              type: "image",
+              data: rawData,
+              mimeType: "image/png",
+            },
           ],
         };
       }
