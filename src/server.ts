@@ -22,49 +22,48 @@ export class DolphinMcpServer {
 
   setupBasicTools() {
     this.server.tool(
-      'start-notification-stream',
-      'Starts sending periodic notifications',
+      'pressButton',
+      'Press a button on the gamecube controller',
       {
-        interval: z.number().describe('Interval in milliseconds between notifications').default(1000),
-        count: z.number().describe('Number of notifications to send').default(10),
+        actions: z.object({
+          buttons: z.object({
+            a: z.boolean().optional().describe("Press (true) or release (false) the A button"),
+            b: z.boolean().optional().describe("Press (true) or release (false) the B button"),
+            x: z.boolean().optional().describe("Press (true) or release (false) the X button"),
+            y: z.boolean().optional().describe("Press (true) or release (false) the Y button"),
+            z: z.boolean().optional().describe("Press (true) or release (false) the Z button"),
+            start: z.boolean().optional().describe("Press (true) or release (false) the Start button"),
+            up: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Up button"),
+            down: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Down button"),
+            left: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Left button"),
+            right: z.boolean().optional().describe("Press (true) or release (false) the D-Pad Right button"),
+            l: z.boolean().optional().describe("Press (true) or release (false) the L shoulder button"),
+            r: z.boolean().optional().describe("Press (true) or release (false) the R shoulder button"),
+          }).optional().describe("Specify button states (true for pressed, false for released). Omit buttons to leave them unchanged."),
+
+          mainStick: z.object({
+            direction: z.enum(["up", "right", "down", "left"]).optional().describe("The direction to move the stick in (up, right, down, left)."),
+          }).optional().describe("Specify main analog stick position. Omit to leave unchanged."),
+
+          cStick: z.object({
+            direction: z.enum(["up", "right", "down", "left"]).optional().describe("The direction to move the stick in (up, right, down, left)."),
+          }).optional().describe("Specify C-stick position. Omit to leave unchanged."),
+
+          triggers: z.object({
+             l: z.number().min(0).max(255).optional().describe("Left trigger pressure (0=released, 255=fully pressed)"),
+             r: z.number().min(0).max(255).optional().describe("Right trigger pressure (0=released, 255=fully pressed)"),
+          }).optional().describe("Specify analog trigger pressure. Omit to leave unchanged."),
+
+        }).describe("Define the controller actions to perform. Only include the controls you want to change."),
+        duration: z.enum(["short", "medium", "long"]).optional().describe("How long to press for; short (5 frames), medium (10 frames), long (20 frames)").default("short"),
       },
-      async ({ interval, count }, { sendNotification }): Promise<CallToolResult> => {
-        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-        let counter = 0;
-    
-        // Send the initial notification
-        await sendNotification({
-          method: "notifications/message",
-          params: {
-            level: "info",
-            data: `Starting notification stream with ${count} messages every ${interval}ms`
-          }
-        });
-    
-        // Send periodic notifications
-        while (counter < count) {
-          counter++;
-          await sleep(interval);
-    
-          try {
-            await sendNotification({
-              method: "notifications/message",
-              params: {
-                level: "info",
-                data: `Notification #${counter} at ${new Date().toISOString()}`
-              }
-            });
-          }
-          catch (error) {
-            console.error("Error sending notification:", error);
-          }
-        }
-    
+      async ({ actions }): Promise<CallToolResult> => {
+        console.log('Received request to press button:', actions);
         return {
           content: [
             {
               type: 'text',
-              text: `Completed sending ${count} notifications every ${interval}ms`,
+              text: `Done!`,
             }
           ],
         };
