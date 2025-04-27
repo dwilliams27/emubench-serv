@@ -13,3 +13,18 @@ export function directionToStickPosition(direction: string): { x: number; y: num
       throw new Error("Invalid direction");
   }
 }
+
+export function durationToFrames(duration: string): number {
+  switch (duration) {
+    case "short":
+      return 5;
+    case "medium":
+      return 20;
+    case "long":
+      return 60;
+    case "toggle":
+      return 0;
+    default:
+      throw new Error("Invalid duration");
+  }
+}
