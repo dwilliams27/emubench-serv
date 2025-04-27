@@ -3,8 +3,7 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { Request, Response } from 'express';
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { directionToStickPosition } from "./utils";
-import { connected } from "process";
+import { directionToStickPosition, durationToFrames } from "./utils";
 import { ipcGetScreenshot, ipcPostControllerInput } from "./ipc";
 
 /**
@@ -40,8 +39,6 @@ export class DolphinMcpServer {
             down: z.boolean().optional().describe("Press/release the D-Pad Down button"),
             left: z.boolean().optional().describe("Press/release the D-Pad Left button"),
             right: z.boolean().optional().describe("Press/release the D-Pad Right button"),
-            l: z.boolean().optional().describe("Press/release the L shoulder button"),
-            r: z.boolean().optional().describe("Press/release the R shoulder button"),
           }).optional().describe("Specify button states (true=pressed, false=released). Omit buttons to leave them unchanged."),
 
           mainStick: z.object({
@@ -53,23 +50,21 @@ export class DolphinMcpServer {
           }).optional().describe("Specify C-stick position. Omit to leave unchanged."),
 
           triggers: z.object({
-             l: z.number().min(0).max(255).optional().describe("Left trigger pressure (0=released, 255=fully pressed)"),
-             r: z.number().min(0).max(255).optional().describe("Right trigger pressure (0=released, 255=fully pressed)"),
+             l: z.boolean().optional().describe("Press/release the Left Trigger"),
+             r: z.boolean().optional().describe("Press/release the Right Trigger"),
           }).optional().describe("Specify analog trigger pressure. Omit to leave unchanged."),
-
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
-        duration: z.enum(["short", "medium", "long"]).optional().describe("How long to press for; short (5 frames), medium (10 frames), long (20 frames)").default("short"),
+        duration: z.enum(["short", "medium", "long", "toggle"]).optional().describe("How long to press for; short (5 frames), medium (20 frames), long (60 frames), or toggle").default("short"),
       },
       async ({ actions, duration }): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
 
         const ipcRequest = {
           connected: true,
-          ...(actions.buttons ? { buttons: actions.buttons } : {}),
+          ...(actions.buttons ? { buttons: { ...actions.buttons, ...actions.triggers } } : {}),
           ...(actions.mainStick?.direction ? { mainStick: directionToStickPosition(actions.mainStick?.direction) } : {}),
           ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
-          ...(actions.triggers ? { triggers: actions.triggers } : {}),
-          frames: duration === "short" ? 5 : duration === "medium" ? 10 : 20,
+          frames: durationToFrames(duration),
         }
 
         await ipcPostControllerInput(ipcRequest);
