@@ -54,14 +54,14 @@ export class DolphinMcpServer {
              r: z.boolean().optional().describe("Press/release the Right Trigger"),
           }).optional().describe("Specify analog trigger pressure. Omit to leave unchanged."),
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
-        duration: z.enum(["short", "medium", "long", "toggle"]).optional().describe("How long to press for; short (5 frames), medium (20 frames), long (60 frames), or toggle").default("short"),
+        duration: z.enum(["short", "medium", "long", "toggle"]).optional().describe("How long to press for; short (5 frames), medium (60 frames), long (120 frames), or toggle").default("short"),
       },
       async ({ actions, duration }): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
 
         const ipcRequest = {
           connected: true,
-          ...(actions.buttons ? { buttons: { ...actions.buttons, ...actions.triggers } } : {}),
+          ...((actions.buttons || actions.triggers) ? { buttons: { ...actions.buttons, ...actions.triggers } } : {}),
           ...(actions.mainStick?.direction ? { mainStick: directionToStickPosition(actions.mainStick?.direction) } : {}),
           ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
           frames: durationToFrames(duration),
