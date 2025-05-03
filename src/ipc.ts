@@ -32,20 +32,40 @@ export async function ipcGetScreenshot() {
   }
 }
 
-export async function ipcSaveState(slot: number) {
+export async function ipcSaveStateSlot(slot: number) {
   try {
-    console.log(`Saving state ${slot}`);
-    const response = await axios.post(`http://localhost:58111/api/savestate/${slot}`);
+    console.log(`Saving state to slot ${slot}`);
+    const response = await axios.post(`http://localhost:58111/api/emulation/state`, { action: 'save', to: slot });
   } catch (error) {
     console.error('Error saving state:', error);
     return null;
   }
 }
 
-export async function ipcLoadSaveState(slot: number) {
+export async function ipcLoadStateSlot(slot: number) {
   try {
-    console.log(`Loading state ${slot}`);
-    const response = await axios.get(`http://localhost:58111/api/savestate/${slot}`);
+    console.log(`Loading state from slot ${slot}`);
+    const response = await axios.post(`http://localhost:58111/api/emulation/state`, { action: 'load', to: slot });
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return null;
+  }
+}
+
+export async function ipcSaveStateFile(file: string) {
+  try {
+    console.log(`Saving state to file ${file}`);
+    const response = await axios.post(`http://localhost:58111/api/emulation/state`, { action: 'save', to: file });
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return null;
+  }
+}
+
+export async function ipcLoadStateFile(file: string) {
+  try {
+    console.log(`Loading state from file ${file}`);
+    const response = await axios.post(`http://localhost:58111/api/emulation/state`, { action: 'load', to: file });
   } catch (error) {
     console.error('Error saving state:', error);
     return null;
@@ -56,7 +76,7 @@ export async function ipcSetEmulationSpeed(speed: number) {
   try {
     console.log(`Setting emulation speed to ${speed}`);
     const response = await axios.post(
-      `http://localhost:58111/api/config/emuspeed`,
+      `http://localhost:58111/api/emulation/config`,
     { speed }
     );
   } catch (error) {
