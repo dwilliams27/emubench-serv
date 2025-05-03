@@ -2,7 +2,6 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Request, Response } from "express";
 
 export interface TestOrxTransport {
-  id: string;
   req: Request;
   res: Response;
 }
