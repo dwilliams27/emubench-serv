@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import { DmcpSession } from './types/session';
 import { DolphinMcpController } from './controllers/mcp';
 import { TestController } from './controllers/test';
@@ -21,7 +21,7 @@ app.get('/mcp', mcp.getMcpHandler);
 app.post('/messages', mcp.postMessagesHandler);
 
 // test-orx 
-app.get('/test-orx/messages', test.testOrxMessages);
+app.get('/test-orx/events', test.testOrxMessages);
 app.post('/test-orx/setup', test.setupTest);
 app.post('/test-orx/start', test.startTest);
 

@@ -21,13 +21,12 @@ export class TestController {
       res.write(': keepalive\n\n');
     }, 30000);
 
-    const id = Math.random().toString();
-    req.dmcpSession.testOrxTransport = { id, req, res };
-    console.log(`TestOrx session established: ${id} for dmcp-session ${req.dmcpSession.mcpTransport?.sessionId}`);
+    req.dmcpSession.testOrxTransport = { req, res };
+    console.log(`TestOrx session established ${req.dmcpSession.mcpTransport?.sessionId}`);
   
     req.on('close', () => {
       clearInterval(keepAliveInterval);
-      console.log(`TestOrx session closed: ${req.dmcpSession.testOrxTransport?.id} for dmcp-session ${req.dmcpSession.mcpTransport?.sessionId}`);
+      console.log(`TestOrx session closed ${req.dmcpSession.mcpTransport?.sessionId}`);
       delete req.dmcpSession.testOrxTransport;
     });
   }
