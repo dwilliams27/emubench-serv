@@ -2,23 +2,25 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { Request, Response } from 'express';
+import { ipcPostControllerInput, ipcGetScreenshot } from "../ipc";
+import { DmcpSession } from "../types/session";
+import { directionToStickPosition, durationToFrames } from "../utils";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import { directionToStickPosition, durationToFrames } from "./utils";
-import { ipcGetScreenshot, ipcPostControllerInput } from "./ipc";
 
 /**
- * TODO: Move off sse
+ * TODO: SSE -> Streamable HTTP?
  */
-export class DolphinMcpServer {
+export class DolphinMcpController {
   server: McpServer;
-  transports: Record<string, SSEServerTransport> = {};
+  sessions: Record<string, DmcpSession> = {};
 
-  constructor() {
+  constructor(sessions: Record<string, DmcpSession>) {
     this.server = new McpServer({
       name: 'dolphin-mcp-serv',
       version: '1.0.0',
     }, { capabilities: { logging: {} } });
 
+    this.sessions = sessions;
     this.setupBasicTools();
   }
 
@@ -109,24 +111,22 @@ export class DolphinMcpServer {
     );
   }
 
-  async getMcpHandler(req: Request, res: Response) {
-    console.log('Received GET request to /sse (establishing SSE stream)');
+  getMcpHandler = async (req: Request, res: Response) => {
+    console.log('Establishing SSE stream for MCP');
 
     try {
       const transport = new SSEServerTransport('/messages', res);
+      req.dmcpSession.mcpTransport = transport;
 
-      const sessionId = transport.sessionId;
-      this.transports[sessionId] = transport;
-
-      transport.onclose = () => {
-        console.log(`SSE transport closed for session ${sessionId}`);
-        delete this.transports[sessionId];
+      req.dmcpSession.mcpTransport.onclose = () => {
+        console.log(`SSE transport closed for session ${req.dmcpSession.mcpTransport?.sessionId}`);
+        delete req.dmcpSession.mcpTransport;
       };
 
-      await this.server.connect(transport);
-      await transport.start();
+      await this.server.connect(req.dmcpSession.mcpTransport);
+      await req.dmcpSession.mcpTransport.start();
 
-      console.log(`Established SSE stream with session ID: ${sessionId}`);
+      console.log(`Established SSE stream with session ID: ${req.dmcpSession.mcpTransport?.sessionId}`);
     } catch (error) {
       console.error('Error establishing SSE stream:', error);
       if (!res.headersSent) {
@@ -135,7 +135,7 @@ export class DolphinMcpServer {
     }
   }
 
-  async postMessagesHandler(req: Request, res: Response) {
+  postMessagesHandler = async (req: Request, res: Response) => {
     console.log('Received POST request to /messages');
     const sessionId = req.query.sessionId as string | undefined;
 
@@ -145,7 +145,7 @@ export class DolphinMcpServer {
       return;
     }
 
-    const transport = this.transports[sessionId];
+    const transport = req.dmcpSession.mcpTransport;
     if (!transport) {
       console.error(`No active transport found for session ID: ${sessionId}`);
       res.status(404).send('Session not found');
@@ -164,16 +164,6 @@ export class DolphinMcpServer {
 
   async destroy() {
     console.log('Shutting down server...');
-
-    for (const sessionId in this.transports) {
-      try {
-        console.log(`Closing transport for session ${sessionId}`);
-        await this.transports[sessionId].close();
-        delete this.transports[sessionId];
-      } catch (error) {
-        console.error(`Error closing transport for session ${sessionId}:`, error);
-      }
-    }
     await this.server.close();
     console.log('Server shutdown complete');
   }

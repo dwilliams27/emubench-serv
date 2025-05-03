@@ -1,25 +1,47 @@
 import express, { Request, Response } from 'express';
-import { DolphinMcpServer } from './server';
+import { DmcpSession } from './types/session';
+import { DolphinMcpController } from './controllers/mcp';
+import { TestController } from './controllers/test';
+import { SessionMiddleware } from './middleware/sessionIdMiddleware';
 
 const app = express();
 app.use(express.json());
 
-const server = new DolphinMcpServer();
+// x-dmcp-session-id
+const sessions: Record<string, DmcpSession> = {};
+const sessionMiddleware = new SessionMiddleware(sessions);
 
-app.get('/mcp', async (req: Request, res: Response) => {
-  await server.getMcpHandler(req, res);
-});
+app.use(sessionMiddleware.middleware);
 
-app.post('/messages', async (req: Request, res: Response) => {
-  await server.postMessagesHandler(req, res);
-});
+const mcp = new DolphinMcpController(sessions);
+const test = new TestController(sessions);
+
+// MCP
+app.get('/mcp', mcp.getMcpHandler);
+app.post('/messages', mcp.postMessagesHandler);
+
+// test-orx 
+app.get('/test-orx/messages', test.testOrxMessages);
+app.post('/test-orx/setup', test.setupTest);
+app.post('/test-orx/start', test.startTest);
 
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`🐬🛜 SSE MCP server listening on port ${PORT}`);
+  console.log(`🐬🛜 dolphin-mcp-serv listening on port ${PORT}`);
 });
 
 process.on('SIGINT', async () => {
-  server.destroy();
+  for(const sessionId in sessions) {
+    const session = sessions[sessionId];
+    if (session.mcpTransport) {
+      console.log(`Closing MCP transport for session ${sessionId}`);
+      await session.mcpTransport.close();
+    }
+    if (session.testOrxTransport) {
+      console.log(`Closing TestOrx transport for session ${sessionId}`);
+      await session.testOrxTransport.res.end();
+    }
+  }
+  await mcp.destroy();
   process.exit(0);
 });

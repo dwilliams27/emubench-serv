@@ -1,5 +1,5 @@
 import axios from "axios";
-import { IPCControllerInputRequest } from "./models";
+import { IPCControllerInputRequest } from "./types/gamecube";
 
 export async function ipcPostControllerInput(
   request: IPCControllerInputRequest,
@@ -28,6 +28,39 @@ export async function ipcGetScreenshot() {
     return base64Image;
   } catch (error) {
     console.error('Error grabbing screenshot:', error);
+    return null;
+  }
+}
+
+export async function ipcSaveState(slot: number) {
+  try {
+    console.log(`Saving state ${slot}`);
+    const response = await axios.post(`http://localhost:58111/api/savestate/${slot}`);
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return null;
+  }
+}
+
+export async function ipcLoadSaveState(slot: number) {
+  try {
+    console.log(`Loading state ${slot}`);
+    const response = await axios.get(`http://localhost:58111/api/savestate/${slot}`);
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return null;
+  }
+}
+
+export async function ipcSetEmulationSpeed(speed: number) {
+  try {
+    console.log(`Setting emulation speed to ${speed}`);
+    const response = await axios.post(
+      `http://localhost:58111/api/config/emuspeed`,
+    { speed }
+    );
+  } catch (error) {
+    console.error('Error saving state:', error);
     return null;
   }
 }
