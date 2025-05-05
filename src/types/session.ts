@@ -8,15 +8,23 @@ export interface TestOrxTransport {
 
 export interface TestConfig {
   gameId: string;
+  gamePath: string;
   startStateFilename: string;
-  contextMemWatches: Record<string, string>;
-  endStateMemWatches: Record<string, string>;
+  contextMemWatches: string[];
+  endStateMemWatches: string[];
 };
 
+export interface TestState {
+  contextMemWatches: Record<string, string>;
+  endStateMemWatches: Record<string, string>;
+}
+
 export interface DmcpSession {
+  setup: boolean;
   started: boolean;
   finished: boolean;
   activeTest?: TestConfig;
+  testState?: TestState;
   testOrxTransport?: TestOrxTransport;
   mcpTransport?: SSEServerTransport;
 }
