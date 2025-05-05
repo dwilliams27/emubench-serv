@@ -84,3 +84,16 @@ export async function ipcSetEmulationSpeed(speed: number) {
     return null;
   }
 }
+
+export async function ipcBootGame(game_path: string) {
+  try {
+    console.log(`Booting game from ${game_path}`);
+    const response = await axios.post(
+      `http://localhost:58111/api/emulation/boot`,
+    { game_path }
+    );
+  } catch (error) {
+    console.error('Error saving state:', error);
+    return null;
+  }
+}
