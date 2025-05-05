@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { DmcpSession, TestConfig } from "../types/session";
+import { ipcBootGame, ipcLoadStateFile, ipcReadMemwatches, ipcSetEmulationState, ipcSetMemwatches } from "../ipc";
 
 export class TestController {
   sessions: Record<string, DmcpSession>;
@@ -33,21 +34,57 @@ export class TestController {
 
   setupTest = async (req: Request, res: Response) => {
     console.log('Setting up test');
+    if (req.dmcpSession.setup) {
+      res.status(400).send('There is already a test setup');
+      return;
+    }
     const testConfig: TestConfig = req.body.config;
   
     req.dmcpSession.activeTest = testConfig;
   
-    // TODO: File based save states (with pause?)
-    // await ipcLoadSaveState();
+    await ipcBootGame(req.dmcpSession.activeTest.gamePath);
+
+    // TODO: Make IPC call block until game is booted
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    await ipcLoadStateFile(req.dmcpSession.activeTest.startStateFilename);
+    await ipcSetEmulationState('pause');
+
+    // TODO: Streamline
+    const contextMemWatchesKeys = req.dmcpSession.activeTest.contextMemWatches;
+    const endStateMemWatchesKeys = req.dmcpSession.activeTest.endStateMemWatches;
+    await ipcSetMemwatches(contextMemWatchesKeys);
+    await ipcSetMemwatches(endStateMemWatchesKeys);
+    const contextMemWatchesValues = await ipcReadMemwatches(contextMemWatchesKeys);
+    const endStateMemWatchesValues = await ipcReadMemwatches(endStateMemWatchesKeys);
+    req.dmcpSession.testState = {
+      contextMemWatches: contextMemWatchesValues.reduce((acc: Record<string, string>, value: string, index: number) => {
+        acc[contextMemWatchesKeys[index]] = value;
+        return acc;
+      }, {} as Record<string, string>),
+      endStateMemWatches: endStateMemWatchesValues.reduce((acc: Record<string, string>, value: string, index: number) => {
+        acc[endStateMemWatchesKeys[index]] = value;
+        return acc;
+      }, {} as Record<string, string>),
+    };
+
+    req.dmcpSession.setup = true;
   
     res.send(200);
   }
 
-  startTest = (req: Request, res: Response) => {
+  startTest = async (req: Request, res: Response) => {
+    if (!req.dmcpSession.activeTest) {
+      res.status(400).send('No active test found');
+      return;
+    }
+    if (req.dmcpSession.started) {
+      res.status(400).send('Test already started');
+      return;
+    }
+
     console.log('Starting test');
-  
-    // TODO: Play
-    // await ipcPlayEmulation();
+    await ipcSetEmulationState('play');
 
     req.dmcpSession.started = true;
   
