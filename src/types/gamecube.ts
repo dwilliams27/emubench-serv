@@ -31,5 +31,4 @@ export interface MemoryWatch {
   address: string; // Address in hex format, e.g. "0x80000000"
   offset?: string; // If the address is a pointer, this is the offset to read from
   size: number; // Size in bytes
-  currentValue?: string; // Current value in hex format
 }

@@ -118,21 +118,21 @@ export async function ipcSetupMemWatches(watches: Record<string, MemoryWatch>) {
       `http://localhost:58111/api/memwatch/setup`,
       { watches }
     );
-  } catch (error) {
-    console.error('Error setting memwatches:', error);
+  } catch (error: any) {
+    console.error('Error setting memwatches:', error?.response?.data);
     return null;
   }
 }
 
-export async function ipcReadMemWatches(addressStrings: string[]) {
+export async function ipcReadMemWatches(names: string[]) {
   try {
-    console.log(`Reading memwatches on addresses ${addressStrings.join(", ")}`);
+    console.log(`Reading memwatches on addresses ${names.join(", ")}`);
     const response = await axios.get(
-      `http://localhost:58111/api/memwatch/read`
+      `http://localhost:58111/api/memwatch/values?names=${names.join(",")}`,
     );
     return response.data.values;
-  } catch (error) {
-    console.error('Error reading memwatches:', error);
+  } catch (error: any) {
+    console.error('Error reading memwatches:', error?.response?.data);
     return null;
   }
 }

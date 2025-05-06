@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { DmcpSession, TestConfig } from "../types/session";
-import { ipcBootGame, ipcLoadStateFile, ipcReadMemwatches, ipcSetEmulationState, ipcSetMemwatches } from "../ipc";
+import { ipcBootGame, ipcLoadStateFile, ipcReadMemWatches, ipcSetEmulationState, ipcSetupMemWatches } from "../ipc";
 
 export class TestController {
   sessions: Record<string, DmcpSession>;
@@ -51,22 +51,24 @@ export class TestController {
     await ipcSetEmulationState('pause');
 
     // TODO: Streamline
-    const contextMemWatchesKeys = req.dmcpSession.activeTest.contextMemWatches;
-    const endStateMemWatchesKeys = req.dmcpSession.activeTest.endStateMemWatches;
-    await ipcSetMemwatches(contextMemWatchesKeys);
-    await ipcSetMemwatches(endStateMemWatchesKeys);
-    const contextMemWatchesValues = await ipcReadMemwatches(contextMemWatchesKeys);
-    const endStateMemWatchesValues = await ipcReadMemwatches(endStateMemWatchesKeys);
+    const contextMemWatches = req.dmcpSession.activeTest.contextMemWatches;
+    const endStateMemWatches = req.dmcpSession.activeTest.endStateMemWatches;
+    let contextMemWatchesState = {};
+    let endStateMemWatchesState = {};
+    if (Object.keys(contextMemWatches).length > 0) {
+      await ipcSetupMemWatches(contextMemWatches);
+      contextMemWatchesState = await ipcReadMemWatches(Object.keys(contextMemWatches));
+    }
+    if (Object.keys(endStateMemWatches).length > 0) {
+      await ipcSetupMemWatches(endStateMemWatches);
+      endStateMemWatchesState = await ipcReadMemWatches(Object.keys(endStateMemWatches));
+    }
+
     req.dmcpSession.testState = {
-      contextMemWatches: contextMemWatchesValues.reduce((acc: Record<string, string>, value: string, index: number) => {
-        acc[contextMemWatchesKeys[index]] = value;
-        return acc;
-      }, {} as Record<string, string>),
-      endStateMemWatches: endStateMemWatchesValues.reduce((acc: Record<string, string>, value: string, index: number) => {
-        acc[endStateMemWatchesKeys[index]] = value;
-        return acc;
-      }, {} as Record<string, string>),
+      contextMemWatches: contextMemWatchesState,
+      endStateMemWatches: endStateMemWatchesState,
     };
+    console.log('State:', req.dmcpSession.testState);
 
     req.dmcpSession.setup = true;
   
