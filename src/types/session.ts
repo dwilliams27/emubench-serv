@@ -1,5 +1,6 @@
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Request, Response } from "express";
+import { MemoryWatch } from "./gamecube";
 
 export interface TestOrxTransport {
   req: Request;
@@ -10,8 +11,8 @@ export interface TestConfig {
   gameId: string;
   gamePath: string;
   startStateFilename: string;
-  contextMemWatches: string[];
-  endStateMemWatches: string[];
+  contextMemWatches: Record<string, MemoryWatch>;
+  endStateMemWatches: Record<string, MemoryWatch>;
 };
 
 export interface TestState {
