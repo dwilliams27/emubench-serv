@@ -1,8 +1,8 @@
 import axios from "axios";
-import { IPCControllerInputRequest } from "./types/gamecube";
+import { IpcControllerInputRequest, MemoryWatch } from "./types/gamecube";
 
 export async function ipcPostControllerInput(
-  request: IPCControllerInputRequest,
+  request: IpcControllerInputRequest,
   controllerPort = 0,
 ) {
   request.connected = true;
@@ -111,31 +111,28 @@ export async function ipcBootGame(game_path: string) {
   }
 }
 
-// Format: "000000" -> "0x000000"
-// Can follow pointers: "000000 01" -> "(*0x000000) + 0x01"
-export async function ipcSetMemwatches(addressStrings: string[]) {
+export async function ipcSetupMemWatches(watches: Record<string, MemoryWatch>) {
   try {
-    console.log(`Setting up memwatches for addresses ${addressStrings.join(", ")}`);
+    console.log(`Setting up memwatches for addresses ${Object.values(watches).map((watch) => watch.address).join(", ")}`);
     const response = await axios.post(
-      `http://localhost:58111/api/memwatch`,
-      { addresses: addressStrings }
+      `http://localhost:58111/api/memwatch/setup`,
+      { watches }
     );
   } catch (error) {
-    console.error('Error setting emulation state:', error);
+    console.error('Error setting memwatches:', error);
     return null;
   }
 }
 
-export async function ipcReadMemwatches(addressStrings: string[]) {
+export async function ipcReadMemWatches(addressStrings: string[]) {
   try {
     console.log(`Reading memwatches on addresses ${addressStrings.join(", ")}`);
     const response = await axios.get(
-      `http://localhost:58111/api/memwatch?addresses=${addressStrings.join("&addresses=")}`
+      `http://localhost:58111/api/memwatch/read`
     );
-    console.log(`Response: ${JSON.stringify(response.data)}`);
     return response.data.values;
   } catch (error) {
-    console.error('Error setting emulation state:', error);
+    console.error('Error reading memwatches:', error);
     return null;
   }
 }
