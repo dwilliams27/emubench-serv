@@ -1,5 +1,5 @@
 {
-  "name": "dolphin-mcp-serv",
+  "name": "emubench-dolphin-serv",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
