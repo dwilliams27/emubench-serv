@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { DmcpSession } from './types/session';
 import { DolphinMcpController } from './controllers/mcp';
 import { TestController } from './controllers/test';
@@ -6,6 +7,13 @@ import { SessionMiddleware } from './middleware/sessionIdMiddleware';
 
 const app = express();
 app.use(express.json());
+
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-dmcp-session-id'],
+  credentials: true
+}));
 
 // x-dmcp-session-id
 const sessions: Record<string, DmcpSession> = {};
