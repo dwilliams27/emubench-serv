@@ -1,5 +1,5 @@
 {
-  "name": "emubench-dolphin-serv",
+  "name": "emubench-serv",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -15,7 +15,10 @@
   "description": "",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.1",
+    "@types/cors": "^2.8.18",
     "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "ws": "^8.18.1"
   },
