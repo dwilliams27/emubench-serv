@@ -1,4 +1,4 @@
-# 🐬🛜 emubench-dolphin-serv
+# 🛜 emubench-serv
 
 Exposes tools using MCP for directly interacting with Gamecube games in the Dolphin emulator.
 
