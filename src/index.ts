@@ -33,7 +33,7 @@ app.get('/test-orx/events', test.testOrxMessages);
 app.post('/test-orx/setup', test.setupTest);
 app.post('/test-orx/start', test.startTest);
 
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 app.listen(PORT, () => {
   console.log(`🐬🛜 dolphin-mcp-serv listening on port ${PORT}`);
 });
