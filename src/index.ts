@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import { DmcpSession } from './types/session';
-import { DolphinMcpController } from './controllers/mcp';
-import { TestController } from './controllers/test';
-import { SessionMiddleware } from './middleware/sessionIdMiddleware';
+import { cloudRunMiddleware } from './middleware/cloud-run.middleware';
+import { sessionMiddleware } from './middleware/session.middleware';
+import * as mcpController from './controllers/mcp';
+import * as testController from './controllers/test';
+import { sessionService } from './services/session.service';
+import { mcpService } from './services/mcp.service';
 
 const app = express();
 app.use(express.json());
@@ -15,23 +17,17 @@ app.use(cors({
   credentials: true
 }));
 
-// x-dmcp-session-id
-const sessions: Record<string, DmcpSession> = {};
-const sessionMiddleware = new SessionMiddleware(sessions);
-
-app.use(sessionMiddleware.middleware);
-
-const mcp = new DolphinMcpController(sessions);
-const test = new TestController(sessions);
+app.use(cloudRunMiddleware);
+app.use(sessionMiddleware);
 
 // MCP
-app.get('/mcp', mcp.getMcpHandler);
-app.post('/messages', mcp.postMessagesHandler);
+app.get('/mcp', mcpController.getMcpHandler);
+app.post('/messages', mcpController.postMessagesHandler);
 
 // test-orx 
-app.get('/test-orx/events', test.testOrxMessages);
-app.post('/test-orx/setup', test.setupTest);
-app.post('/test-orx/start', test.startTest);
+app.get('/test-orx/events', testController.testOrxMessages);
+app.post('/test-orx/setup', testController.setupTest);
+app.post('/test-orx/start', testController.startTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 app.listen(PORT, () => {
@@ -39,8 +35,8 @@ app.listen(PORT, () => {
 });
 
 process.on('SIGINT', async () => {
-  for(const sessionId in sessions) {
-    const session = sessions[sessionId];
+  for(const sessionId in sessionService.sessions) {
+    const session = sessionService.sessions[sessionId];
     if (session.mcpTransport) {
       console.log(`Closing MCP transport for session ${sessionId}`);
       await session.mcpTransport.close();
@@ -50,6 +46,6 @@ process.on('SIGINT', async () => {
       await session.testOrxTransport.res.end();
     }
   }
-  await mcp.destroy();
+  await mcpService.destroy();
   process.exit(0);
 });

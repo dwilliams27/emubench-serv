@@ -8,6 +8,7 @@ export interface TestOrxTransport {
 }
 
 export interface TestConfig {
+  autoStart: boolean;
   gameId: string;
   gamePath: string;
   startStateFilename: string;
@@ -16,16 +17,22 @@ export interface TestConfig {
 };
 
 export interface TestState {
+  setup: boolean;
+  started: boolean;
+  finished: boolean;
   contextMemWatches: Record<string, string>;
   endStateMemWatches: Record<string, string>;
 }
 
+export interface ActiveTest {
+  id: string;
+  config: TestConfig;
+  state: TestState;
+  container: ContainerInstance;
+}
+
 export interface DmcpSession {
-  setup: boolean;
-  started: boolean;
-  finished: boolean;
-  activeTest?: TestConfig;
-  testState?: TestState;
+  activeTests: Record<string, ActiveTest>;
   testOrxTransport?: TestOrxTransport;
   mcpTransport?: SSEServerTransport;
 }

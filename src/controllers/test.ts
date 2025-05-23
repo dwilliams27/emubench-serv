@@ -1,95 +1,94 @@
 import { Request, Response } from "express";
-import { DmcpSession, TestConfig } from "../types/session";
+import { TestConfig, TestState } from "../types/session";
 import { ipcBootGame, ipcLoadStateFile, ipcReadMemWatches, ipcSetEmulationState, ipcSetupMemWatches } from "../ipc";
+import { genId, TEST_ID } from "../utils/id";
 
-export class TestController {
-  sessions: Record<string, DmcpSession>;
-
-  constructor(sessions: Record<string, DmcpSession>) {
-    this.sessions = sessions;
-  }
-
-  // Async sends test results
-  testOrxMessages = async (req: Request, res: Response) => {
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    });
-    
-    // Send periodic keep-alive to prevent connection timeout
-    const keepAliveInterval = setInterval(() => {
-      res.write(': keepalive\n\n');
-    }, 30000);
-
-    req.dmcpSession.testOrxTransport = { req, res };
-    console.log(`TestOrx session established ${req.dmcpSession.mcpTransport?.sessionId}`);
+// Async sends test results
+export const testOrxMessages = async (req: Request, res: Response) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
   
-    req.on('close', () => {
-      clearInterval(keepAliveInterval);
-      console.log(`TestOrx session closed ${req.dmcpSession.mcpTransport?.sessionId}`);
-      delete req.dmcpSession.testOrxTransport;
-    });
-  }
+  // Send periodic keep-alive to prevent connection timeout
+  const keepAliveInterval = setInterval(() => {
+    res.write(': keepalive\n\n');
+  }, 30000);
 
-  setupTest = async (req: Request, res: Response) => {
-    console.log('Setting up test');
-    if (req.dmcpSession.setup) {
-      res.status(400).send('There is already a test setup');
-      return;
-    }
-    const testConfig: TestConfig = req.body.config;
-  
-    req.dmcpSession.activeTest = testConfig;
-  
-    await ipcBootGame(req.dmcpSession.activeTest.gamePath);
+  req.dmcpSession.testOrxTransport = { req, res };
+  console.log(`TestOrx session established ${req.dmcpSession.mcpTransport?.sessionId}`);
 
-    // TODO: Make IPC call block until game is booted
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    await ipcLoadStateFile(req.dmcpSession.activeTest.startStateFilename);
-    await ipcSetEmulationState('pause');
-
-    // TODO: Streamline
-    const contextMemWatches = req.dmcpSession.activeTest.contextMemWatches;
-    const endStateMemWatches = req.dmcpSession.activeTest.endStateMemWatches;
-    let contextMemWatchesState = {};
-    let endStateMemWatchesState = {};
-    if (Object.keys(contextMemWatches).length > 0) {
-      await ipcSetupMemWatches(contextMemWatches);
-      contextMemWatchesState = await ipcReadMemWatches(Object.keys(contextMemWatches));
-    }
-    if (Object.keys(endStateMemWatches).length > 0) {
-      await ipcSetupMemWatches(endStateMemWatches);
-      endStateMemWatchesState = await ipcReadMemWatches(Object.keys(endStateMemWatches));
-    }
-
-    req.dmcpSession.testState = {
-      contextMemWatches: contextMemWatchesState,
-      endStateMemWatches: endStateMemWatchesState,
-    };
-    console.log('State:', req.dmcpSession.testState);
-
-    req.dmcpSession.setup = true;
-  
-    res.send(200);
-  }
-
-  startTest = async (req: Request, res: Response) => {
-    if (!req.dmcpSession.activeTest) {
-      res.status(400).send('No active test found');
-      return;
-    }
-    if (req.dmcpSession.started) {
-      res.status(400).send('Test already started');
-      return;
-    }
-
-    console.log('Starting test');
-    await ipcSetEmulationState('play');
-
-    req.dmcpSession.started = true;
-  
-    res.send(200);
-  };
+  req.on('close', () => {
+    clearInterval(keepAliveInterval);
+    console.log(`TestOrx session closed ${req.dmcpSession.mcpTransport?.sessionId}`);
+    delete req.dmcpSession.testOrxTransport;
+  });
 }
+
+export const setupTest = async (req: Request, res: Response) => {
+  console.log('Setting up test');
+
+  const testConfig: TestConfig = req.body.config;
+  const testId = genId(TEST_ID);
+  const testState: TestState = {
+    setup: false,
+    started: false,
+    finished: false,
+    contextMemWatches: {},
+    endStateMemWatches: {}
+  };
+  const testContainer = await req.cloudRunService.createContainer(testId);
+
+  const activeTest = {
+    id: testId,
+    config: testConfig,
+    state: testState,
+    container: testContainer
+  }
+
+  req.dmcpSession.activeTests[testId] = activeTest;
+
+  // Setup then fetch initials for memwatches
+  if (Object.keys(activeTest.config.contextMemWatches).length > 0) {
+    await ipcSetupMemWatches(activeTest.config.contextMemWatches);
+    activeTest.state.contextMemWatches = await ipcReadMemWatches(Object.keys(activeTest.state.contextMemWatches));
+  }
+  if (Object.keys(activeTest.config.endStateMemWatches).length > 0) {
+    await ipcSetupMemWatches(activeTest.config.endStateMemWatches);
+    activeTest.state.endStateMemWatches = await ipcReadMemWatches(Object.keys(activeTest.state.endStateMemWatches));
+  }
+
+  console.log('State:', activeTest.state);
+
+  activeTest.state.setup = true;
+
+  if (activeTest.config.autoStart) {
+    await ipcSetEmulationState('play');
+  }
+
+  res.send(200);
+}
+
+export const startTest = async (req: Request, res: Response) => {
+  if (!req.body.testId) {
+    res.status(400).send('Must specify testId');
+    return;
+  }
+  const activeTest = req.dmcpSession.activeTests[req.body.testId];
+  if (!activeTest) {
+    res.status(400).send(`No active test found for id ${req.body.testId}`);
+    return;
+  }
+  if (activeTest.state.started) {
+    res.status(400).send('Test already started');
+    return;
+  }
+
+  console.log('Starting test');
+  await ipcSetEmulationState('play');
+
+  activeTest.state.started = true;
+
+  res.send(200);
+};
