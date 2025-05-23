@@ -14,12 +14,15 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google-cloud/run": "^2.1.0",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@types/cors": "^2.8.18",
     "axios": "^1.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "google-auth-library": "^10.0.0-rc.2",
+    "nanoid": "^5.1.5",
     "pouchdb": "^9.0.0",
     "ws": "^8.18.1"
   },

@@ -1,5 +1,6 @@
 import { CloudRunService } from "../services/cloud-run.service";
 import { McpService } from "../services/mcp.service";
+import { EmulationService } from "../services/emulation.service";
 import { DmcpSession } from "./session";
 
 declare global {
@@ -7,6 +8,7 @@ declare global {
     interface Request {
       cloudRunService: CloudRunService;
       dmcpSession: DmcpSession;
+      emulationService: EmulationService;
       mcpService: McpService;
     }
   }
