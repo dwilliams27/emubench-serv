@@ -1,5 +1,5 @@
 import axios from "axios";
-import { IpcControllerInputRequest, MemoryWatch } from "./types/gamecube";
+import { IpcControllerInputRequest, MemoryWatch } from "@/types/gamecube";
 
 export async function ipcPostControllerInput(
   request: IpcControllerInputRequest,

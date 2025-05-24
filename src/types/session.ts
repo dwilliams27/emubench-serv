@@ -1,10 +1,18 @@
+import { MemoryWatch } from "@/types/gamecube";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Request, Response } from "express";
-import { MemoryWatch } from "./gamecube";
 
 export interface TestOrxTransport {
   req: Request;
   res: Response;
+}
+
+export interface ContainerInstance {
+  id: string;
+  url: string;
+  status: 'starting' | 'running' | 'stopped';
+  createdAt: Date;
+  lastActivity: Date;
 }
 
 export interface TestConfig {

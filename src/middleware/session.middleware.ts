@@ -1,5 +1,5 @@
+import { sessionService } from "@/services/session.service";
 import { Request, Response } from "express";
-import { sessionService } from "../services/session.service";
 
 const sessionIdHeader = "x-dmcp-session-id";
 

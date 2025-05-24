@@ -1,7 +1,7 @@
-import { CloudRunService } from "../services/cloud-run.service";
-import { McpService } from "../services/mcp.service";
-import { EmulationService } from "../services/emulation.service";
-import { DmcpSession } from "./session";
+import { CloudRunService } from "@/services/cloud-run.service";
+import { McpService } from "@/services/mcp.service";
+import { EmulationService } from "@/services/emulation.service";
+import { DmcpSession } from "@/types/session";
 
 declare global {
   namespace Express {

@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 
-
 export const getMcpHandler = async (req: Request, res: Response) => {
   console.log('Establishing SSE stream for MCP');
 

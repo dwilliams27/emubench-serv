@@ -1,8 +1,8 @@
+import { ipcGetScreenshot, ipcPostControllerInput } from "@/ipc";
+import { directionToStickPosition, durationToFrames } from "@/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ipcPostControllerInput, ipcGetScreenshot } from "../ipc";
-import { directionToStickPosition, durationToFrames } from "../utils";
 
 /**
  * TODO: SSE -> Streamable HTTP?

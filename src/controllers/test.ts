@@ -1,7 +1,6 @@
+import { TestConfig, TestState } from "@/types/session";
+import { genId, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
-import { TestConfig, TestState } from "../types/session";
-import { ipcBootGame, ipcLoadStateFile, ipcReadMemWatches, ipcSetEmulationState, ipcSetupMemWatches } from "../ipc";
-import { genId, TEST_ID } from "../utils/id";
 
 // Async sends test results
 export const testOrxMessages = async (req: Request, res: Response) => {

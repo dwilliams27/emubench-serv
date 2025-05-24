@@ -1,4 +1,4 @@
-import { DmcpSession } from "../types/session";
+import { DmcpSession } from "@/types/session";
 
 export class SessionService {
   sessions: Record<string, DmcpSession> = {};

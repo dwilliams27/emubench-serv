@@ -1,127 +1,202 @@
-// src/services/cloudRunService.ts
-import { CloudRunClient } from '@google-cloud/run';
-import { GoogleAuth } from 'google-auth-library';
+import { ServicesClient, JobsClient, ExecutionsClient } from '@google-cloud/run';
+import { google } from '@google-cloud/run/build/protos/protos';
 
-interface ContainerInstance {
-  id: string;
-  url: string;
-  status: 'starting' | 'running' | 'stopped';
-  createdAt: Date;
-  lastActivity: Date;
+type IService = google.cloud.run.v2.IService;
+
+const serviceAccount = "emubench-cloudrun";
+const region = "us-central1";
+
+export interface ContainerConfig {
+  image: string;
+  name?: string;
+  env?: Array<{ name: string; value: string }>;
+  resources?: {
+    limits?: {
+      cpu?: string;
+      memory?: string;
+    };
+  };
+  ports?: Array<{ containerPort: number }>;
+  command?: string[];
+  args?: string[];
+}
+
+export interface ServiceConfig {
+  name: string;
+  region: string;
+  containers: ContainerConfig[];
+  maxInstances?: number;
+  minInstances?: number;
+  labels?: { [key: string]: string };
+  timeout?: number;
+  serviceAccount?: string;
 }
 
 export class CloudRunService {
-  private client: CloudRunClient;
-  private auth: GoogleAuth;
+  private servicesClient: ServicesClient;
   private projectId: string;
-  private region: string;
-  private containers: Record<string, ContainerInstance> = {};
 
-  constructor(projectId: string | undefined, region = 'us-central1') {
+  constructor(projectId?: string) {
     if (!projectId) {
-      throw new Error("No project ID found!!")
+      throw new Error('Could not find project ID');
     }
-    this.client = new CloudRunClient();
-    this.auth = new GoogleAuth({
-      scopes: ['https://www.googleapis.com/auth/cloud-platform']
-    });
     this.projectId = projectId;
-    this.region = region;
+    this.servicesClient = new ServicesClient();
   }
 
-  async createContainer(testId: string): Promise<ContainerInstance> {
-    // Unique name for each container based on session
-    const containerName = `emubench-instance-${testId}`;
+  async createService(config: ServiceConfig): Promise<IService> {
+    const parent = `projects/${this.projectId}/locations/${config.region}`;
     
-    // Cloud Run service creation request
-    const [operation] = await this.client.createService({
-      parent: `projects/${this.projectId}/locations/${this.region}`,
-      service: {
-        apiVersion: 'serving.knative.dev/v1',
-        kind: 'Service',
-        metadata: {
-          name: containerName,
-          namespace: this.projectId,
+    const service: IService = {
+      name: `${parent}/services/${config.name}`,
+      template: {
+        containers: config.containers,
+        maxInstanceRequestConcurrency: 1000,
+        scaling: {
+          maxInstanceCount: config.maxInstances || 100,
+          minInstanceCount: config.minInstances || 0,
         },
-        spec: {
-          template: {
-            metadata: {
-              annotations: {
-                'autoscaling.knative.dev/maxScale': '1',
-              },
-            },
-            spec: {
-              containers: [{
-                image: `gcr.io/${this.projectId}/emubench-serv`,
-                ports: [{ containerPort: 3000 }],
-                env: [
-                  { name: 'SESSION_ID', value: testId },
-                  // Add other environment variables as needed
-                ],
-                resources: {
-                  limits: {
-                    cpu: '1',
-                    memory: '512Mi',
-                  },
-                },
-              }],
-            },
-          },
-        },
+        serviceAccount: config.serviceAccount,
       },
-    });
-
-    // Wait for the operation to complete
-    const [service] = await operation.promise();
-    const url = service.status.url;
-
-    // Store container reference
-    const container: ContainerInstance = {
-      id: containerName,
-      url: url,
-      status: 'running',
-      createdAt: new Date(),
-      lastActivity: new Date(),
+      labels: config.labels,
     };
 
-    this.containers[sessionId] = container;
-    return container;
-  }
+    const request = {
+      parent,
+      service,
+      serviceId: config.name,
+    };
 
-  async deleteContainer(sessionId: string): Promise<void> {
-    const container = this.containers[sessionId];
-    if (!container) {
-      throw new Error(`Container for session ${sessionId} not found`);
+    try {
+      const [operation] = await this.servicesClient.createService(request);
+      
+      // Wait for the operation to complete
+      const [response] = await operation.promise();
+      
+      console.log(`Service ${config.name} created successfully`);
+      return response;
+    } catch (error) {
+      console.error('Error creating service:', error);
+      throw error;
     }
-
-    // Delete the Cloud Run service
-    const [operation] = await this.client.deleteService({
-      name: `projects/${this.projectId}/locations/${this.region}/services/${container.id}`,
-    });
-
-    // Wait for the operation to complete
-    await operation.promise();
-
-    // Remove from tracking
-    delete this.containers[sessionId];
   }
 
-  getContainer(sessionId: string): ContainerInstance | undefined {
-    return this.containers[sessionId];
+  /**
+   * Updates an existing Cloud Run service
+   */
+  async updateService(config: Partial<ServiceConfig> & { name: string; region: string }): Promise<IService> {
+    const serviceName = `projects/${this.projectId}/locations/${config.region}/services/${config.name}`;
+    
+    // First, get the current service
+    const [currentService] = await this.servicesClient.getService({ name: serviceName });
+    
+    // Update the service with new configuration
+    const updatedService: IService = {
+      ...currentService,
+      template: {
+        ...currentService.template,
+        containers: config.containers || currentService.template?.containers,
+        scaling: {
+          maxInstanceCount: config.maxInstances || currentService.template?.scaling?.maxInstanceCount,
+          minInstanceCount: config.minInstances || currentService.template?.scaling?.minInstanceCount,
+        },
+        serviceAccount: config.serviceAccount || currentService.template?.serviceAccount,
+      },
+      labels: config.labels || currentService.labels,
+    };
+
+    const request = {
+      service: updatedService,
+    };
+
+    try {
+      const [operation] = await this.servicesClient.updateService(request);
+      const [response] = await operation.promise();
+      
+      console.log(`Service ${config.name} updated successfully`);
+      return response;
+    } catch (error) {
+      console.error('Error updating service:', error);
+      throw error;
+    }
   }
 
-  getAllContainers(): Record<string, ContainerInstance> {
-    return this.containers;
+  /**
+   * Deletes a Cloud Run service
+   */
+  async deleteService(name: string, region: string): Promise<void> {
+    const serviceName = `projects/${this.projectId}/locations/${region}/services/${name}`;
+    
+    try {
+      const [operation] = await this.servicesClient.deleteService({ name: serviceName });
+      await operation.promise();
+      
+      console.log(`Service ${name} deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      throw error;
+    }
   }
 
-  // Utility to clean up idle containers
-  async cleanupIdleContainers(maxIdleTimeMinutes = 15): Promise<void> {
-    const now = new Date();
-    for (const [sessionId, container] of Object.entries(this.containers)) {
-      const idleTime = (now.getTime() - container.lastActivity.getTime()) / (1000 * 60);
-      if (idleTime > maxIdleTimeMinutes) {
-        await this.deleteContainer(sessionId);
+  /**
+   * Lists all Cloud Run services
+   */
+  async listServices(): Promise<IService[]> {
+    const parent = `projects/${this.projectId}/locations/${region}`;
+    const services: IService[] = [];
+    
+    try {
+      const iterable = await this.servicesClient.listServicesAsync({ parent });
+      
+      for await (const service of iterable) {
+        services.push(service);
       }
+      
+      return services;
+    } catch (error) {
+      console.error('Error listing services:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper method to create a service with a predefined container image
+   */
+  async deployContainer(
+    name: string,
+    image: string,
+    options?: {
+      env?: Array<{ name: string; value: string }>;
+    }
+  ): Promise<IService> {
+    const config: ServiceConfig = {
+      name,
+      region,
+      containers: [{
+        image,
+        env: options?.env,
+        ports: [{ containerPort: 58111 }],
+      }],
+      serviceAccount,
+      maxInstances: 1,
+      minInstances: 1,
+    };
+
+    return this.createService(config);
+  }
+
+  /**
+   * Gets the URL of a deployed Cloud Run service
+   */
+  async getServiceUrl(name: string, region: string): Promise<string | null | undefined> {
+    const serviceName = `projects/${this.projectId}/locations/${region}/services/${name}`;
+    
+    try {
+      const [service] = await this.servicesClient.getService({ name: serviceName });
+      return service.uri;
+    } catch (error) {
+      console.error('Error getting service URL:', error);
+      throw error;
     }
   }
 }

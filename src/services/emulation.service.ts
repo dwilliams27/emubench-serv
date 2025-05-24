@@ -1,5 +1,5 @@
+import { IpcControllerInputRequest, MemoryWatch } from "@/types/gamecube";
 import axios from "axios";
-import { IpcControllerInputRequest, MemoryWatch } from "../types/gamecube";
 
 export class EmulationService {
   async postControllerInput(

@@ -1,11 +1,11 @@
 import express from 'express';
 import cors from 'cors';
-import { cloudRunMiddleware } from './middleware/cloud-run.middleware';
-import { sessionMiddleware } from './middleware/session.middleware';
-import * as mcpController from './controllers/mcp';
-import * as testController from './controllers/test';
-import { sessionService } from './services/session.service';
-import { mcpService } from './services/mcp.service';
+import { cloudRunMiddleware } from '@/middleware/cloud-run.middleware';
+import { sessionMiddleware } from '@/middleware/session.middleware';
+import * as mcpController from '@/controllers/mcp';
+import * as testController from '@/controllers/test';
+import { sessionService } from '@/services/session.service';
+import { mcpService } from '@/services/mcp.service';
 
 const app = express();
 app.use(express.json());
