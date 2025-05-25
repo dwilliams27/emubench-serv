@@ -1,5 +1,6 @@
 import { TestConfig, TestState } from "@/types/session";
-import { genId, TEST_ID } from "@/utils/id";
+import { genId, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
+import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 import { Request, Response } from "express";
 
 // Async sends test results
@@ -15,13 +16,13 @@ export const testOrxMessages = async (req: Request, res: Response) => {
     res.write(': keepalive\n\n');
   }, 30000);
 
-  req.dmcpSession.testOrxTransport = { req, res };
-  console.log(`TestOrx session established ${req.dmcpSession.mcpTransport?.sessionId}`);
+  req.emuSession.testOrxTransport = { req, res };
+  console.log(`TestOrx session established ${req.emuSession.mcpTransport?.sessionId}`);
 
   req.on('close', () => {
     clearInterval(keepAliveInterval);
-    console.log(`TestOrx session closed ${req.dmcpSession.mcpTransport?.sessionId}`);
-    delete req.dmcpSession.testOrxTransport;
+    console.log(`TestOrx session closed ${req.emuSession.mcpTransport?.sessionId}`);
+    delete req.emuSession.testOrxTransport;
   });
 }
 
@@ -30,6 +31,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
   const testConfig: TestConfig = req.body.config;
   const testId = genId(TEST_ID);
+  const testAuthKey = genId(TEST_AUTH_KEY_ID, 32);
   const testState: TestState = {
     setup: false,
     started: false,
@@ -37,25 +39,26 @@ export const setupTest = async (req: Request, res: Response) => {
     contextMemWatches: {},
     endStateMemWatches: {}
   };
-  const testContainer = await req.cloudRunService.createContainer(testId);
+  const testContainer = await req.cloudRunService.deployGameContainer(testId, testConfig);
 
   const activeTest = {
     id: testId,
     config: testConfig,
     state: testState,
-    container: testContainer
+    container: testContainer,
+    authKey: testAuthKey
   }
 
-  req.dmcpSession.activeTests[testId] = activeTest;
+  req.emuSession.activeTests[testId] = activeTest;
 
   // Setup then fetch initials for memwatches
   if (Object.keys(activeTest.config.contextMemWatches).length > 0) {
-    await ipcSetupMemWatches(activeTest.config.contextMemWatches);
-    activeTest.state.contextMemWatches = await ipcReadMemWatches(Object.keys(activeTest.state.contextMemWatches));
+    await req.emulationService.setupMemWatches(activeTest, activeTest.config.contextMemWatches);
+    activeTest.state.contextMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.contextMemWatches));
   }
   if (Object.keys(activeTest.config.endStateMemWatches).length > 0) {
-    await ipcSetupMemWatches(activeTest.config.endStateMemWatches);
-    activeTest.state.endStateMemWatches = await ipcReadMemWatches(Object.keys(activeTest.state.endStateMemWatches));
+    await req.emulationService.setupMemWatches(activeTest, activeTest.config.endStateMemWatches);
+    activeTest.state.endStateMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.endStateMemWatches));
   }
 
   console.log('State:', activeTest.state);
@@ -63,7 +66,7 @@ export const setupTest = async (req: Request, res: Response) => {
   activeTest.state.setup = true;
 
   if (activeTest.config.autoStart) {
-    await ipcSetEmulationState('play');
+    await req.emulationService.setEmulationState(activeTest, 'play');
   }
 
   res.send(200);
@@ -74,7 +77,7 @@ export const startTest = async (req: Request, res: Response) => {
     res.status(400).send('Must specify testId');
     return;
   }
-  const activeTest = req.dmcpSession.activeTests[req.body.testId];
+  const activeTest = req.emuSession.activeTests[req.body.testId];
   if (!activeTest) {
     res.status(400).send(`No active test found for id ${req.body.testId}`);
     return;
@@ -85,7 +88,7 @@ export const startTest = async (req: Request, res: Response) => {
   }
 
   console.log('Starting test');
-  await ipcSetEmulationState('play');
+  await req.emulationService.setEmulationState(activeTest, 'play');
 
   activeTest.state.started = true;
 

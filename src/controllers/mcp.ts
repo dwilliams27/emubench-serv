@@ -6,17 +6,17 @@ export const getMcpHandler = async (req: Request, res: Response) => {
 
   try {
     const transport = new SSEServerTransport('/messages', res);
-    req.dmcpSession.mcpTransport = transport;
+    req.emuSession.mcpTransport = transport;
 
-    req.dmcpSession.mcpTransport.onclose = () => {
-      console.log(`SSE transport closed for session ${req.dmcpSession.mcpTransport?.sessionId}`);
-      delete req.dmcpSession.mcpTransport;
+    req.emuSession.mcpTransport.onclose = () => {
+      console.log(`SSE transport closed for session ${req.emuSession.mcpTransport?.sessionId}`);
+      delete req.emuSession.mcpTransport;
     };
 
-    await req.mcpService.server.connect(req.dmcpSession.mcpTransport);
-    await req.dmcpSession.mcpTransport.start();
+    await req.mcpService.server.connect(req.emuSession.mcpTransport);
+    await req.emuSession.mcpTransport.start();
 
-    console.log(`Established SSE stream with session ID: ${req.dmcpSession.mcpTransport?.sessionId}`);
+    console.log(`Established SSE stream with session ID: ${req.emuSession.mcpTransport?.sessionId}`);
   } catch (error) {
     console.error('Error establishing SSE stream:', error);
     if (!res.headersSent) {
@@ -35,7 +35,7 @@ export const postMessagesHandler = async (req: Request, res: Response) => {
     return;
   }
 
-  const transport = req.dmcpSession.mcpTransport;
+  const transport = req.emuSession.mcpTransport;
   if (!transport) {
     console.error(`No active transport found for session ID: ${sessionId}`);
     res.status(404).send('Session not found');

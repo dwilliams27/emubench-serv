@@ -1,6 +1,8 @@
-import { ipcGetScreenshot, ipcPostControllerInput } from "@/ipc";
+import { emulationService } from "@/services/emulation.service";
+import { sessionService } from "@/services/session.service";
 import { directionToStickPosition, durationToFrames } from "@/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
@@ -17,6 +19,20 @@ export class McpService {
     }, { capabilities: { logging: {} } });
 
     this.setupBasicTools();
+  }
+
+  getActiveTest(context: RequestHandlerExtra<any, any>) {
+    if (!context.sessionId) {
+      throw new Error('No session ID provided in request context');
+    }
+    const session = sessionService.sessions[context.sessionId];
+    const activeTest = Object.keys(session.activeTests).find(test => session.activeTests[test].authKey === context.authInfo?.token);
+
+    if (!activeTest) {
+      throw new Error(`No active test found for session ID: ${context.sessionId}`);
+    }
+
+    return session.activeTests[activeTest];
   }
 
   setupBasicTools() {
@@ -53,8 +69,22 @@ export class McpService {
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
         duration: z.enum(["short", "medium", "long", "toggle"]).optional().describe("How long to press for; short (5 frames), medium (60 frames), long (120 frames), or toggle").default("short"),
       },
-      async ({ actions, duration }): Promise<CallToolResult> => {
+      async ({ actions, duration }, context): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
+
+        let activeTest;
+        try {
+          activeTest = this.getActiveTest(context);
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error: ${(error as any).message}`,
+              }
+            ],
+          };
+        }
 
         const ipcRequest = {
           connected: true,
@@ -64,7 +94,8 @@ export class McpService {
           frames: durationToFrames(duration),
         }
 
-        await ipcPostControllerInput(ipcRequest);
+        
+        await emulationService.postControllerInput(activeTest, ipcRequest);
 
         return {
           content: [
@@ -81,8 +112,22 @@ export class McpService {
       'viewScreen',
       'Gives a screenshot of the game',
       {},
-      async (): Promise<CallToolResult> => {
-        const rawData = await ipcGetScreenshot();
+      async (_, context): Promise<CallToolResult> => {
+        let activeTest;
+        try {
+          activeTest = this.getActiveTest(context);
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error: ${(error as any).message}`,
+              }
+            ],
+          };
+        }
+
+        const rawData = await emulationService.getScreenshot(activeTest);
         if (!rawData) {
           return {
             content: [

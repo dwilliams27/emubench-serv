@@ -1,3 +1,4 @@
+import { Request } from "express";
 
 export function directionToStickPosition(direction: string): { x: number; y: number } {
   switch (direction) {
@@ -27,4 +28,15 @@ export function durationToFrames(duration: string): number {
     default:
       throw new Error("Invalid duration");
   }
+}
+
+export function extractBearerToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return null;
+  }
+  
+  const token = authHeader.slice(7).trim(); // Remove "Bearer " prefix
+  return token || null;
 }

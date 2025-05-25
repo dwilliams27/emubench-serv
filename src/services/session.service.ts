@@ -1,7 +1,7 @@
-import { DmcpSession } from "@/types/session";
+import { EmuSession } from "@/types/session";
 
 export class SessionService {
-  sessions: Record<string, DmcpSession> = {};
+  sessions: Record<string, EmuSession> = {};
 
   createSession(sessionId: string) {
     this.sessions[sessionId] = {

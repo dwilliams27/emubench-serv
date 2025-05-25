@@ -1,4 +1,5 @@
-import { ServicesClient, JobsClient, ExecutionsClient } from '@google-cloud/run';
+import { ContainerInstance, TestConfig } from '@/types/session';
+import { ServicesClient } from '@google-cloud/run';
 import { google } from '@google-cloud/run/build/protos/protos';
 
 type IService = google.cloud.run.v2.IService;
@@ -81,16 +82,9 @@ export class CloudRunService {
     }
   }
 
-  /**
-   * Updates an existing Cloud Run service
-   */
   async updateService(config: Partial<ServiceConfig> & { name: string; region: string }): Promise<IService> {
     const serviceName = `projects/${this.projectId}/locations/${config.region}/services/${config.name}`;
-    
-    // First, get the current service
     const [currentService] = await this.servicesClient.getService({ name: serviceName });
-    
-    // Update the service with new configuration
     const updatedService: IService = {
       ...currentService,
       template: {
@@ -121,9 +115,6 @@ export class CloudRunService {
     }
   }
 
-  /**
-   * Deletes a Cloud Run service
-   */
   async deleteService(name: string, region: string): Promise<void> {
     const serviceName = `projects/${this.projectId}/locations/${region}/services/${name}`;
     
@@ -138,9 +129,6 @@ export class CloudRunService {
     }
   }
 
-  /**
-   * Lists all Cloud Run services
-   */
   async listServices(): Promise<IService[]> {
     const parent = `projects/${this.projectId}/locations/${region}`;
     const services: IService[] = [];
@@ -159,22 +147,17 @@ export class CloudRunService {
     }
   }
 
-  /**
-   * Helper method to create a service with a predefined container image
-   */
-  async deployContainer(
-    name: string,
-    image: string,
-    options?: {
-      env?: Array<{ name: string; value: string }>;
-    }
-  ): Promise<IService> {
+  async deployGameContainer(
+    testId: string,
+    testConfig: TestConfig
+  ): Promise<ContainerInstance> {
     const config: ServiceConfig = {
-      name,
+      name: testId,
       region,
       containers: [{
-        image,
-        env: options?.env,
+        image: `gcr.io/${this.projectId}/emubench-${testConfig.gameId}:latest`,
+        // TODO: Memwatch
+        // env: options?.env,
         ports: [{ containerPort: 58111 }],
       }],
       serviceAccount,
@@ -182,12 +165,21 @@ export class CloudRunService {
       minInstances: 1,
     };
 
-    return this.createService(config);
+    const service = await this.createService(config);
+    if (!service.uri) {
+      throw new Error('Service URI is undefined');
+    }
+
+    const containerInstance: ContainerInstance = {
+      id: testId,
+      url: service.uri,
+      status: 'starting',
+      createdAt: new Date()
+    }
+
+    return containerInstance;
   }
 
-  /**
-   * Gets the URL of a deployed Cloud Run service
-   */
   async getServiceUrl(name: string, region: string): Promise<string | null | undefined> {
     const serviceName = `projects/${this.projectId}/locations/${region}/services/${name}`;
     

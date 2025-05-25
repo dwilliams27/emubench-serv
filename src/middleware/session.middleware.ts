@@ -15,6 +15,6 @@ export function sessionMiddleware(req: Request, res: Response, next: () => void)
     sessionService.createSession(sessionId);
   }
 
-  req.dmcpSession = sessionService.sessions[sessionId];
+  req.emuSession = sessionService.sessions[sessionId];
   next();
 }

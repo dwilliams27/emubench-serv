@@ -12,7 +12,6 @@ export interface ContainerInstance {
   url: string;
   status: 'starting' | 'running' | 'stopped';
   createdAt: Date;
-  lastActivity: Date;
 }
 
 export interface TestConfig {
@@ -37,9 +36,11 @@ export interface ActiveTest {
   config: TestConfig;
   state: TestState;
   container: ContainerInstance;
+  // TODO: Maybe rethink this, but my dude is already authed?
+  authKey: string;
 }
 
-export interface DmcpSession {
+export interface EmuSession {
   activeTests: Record<string, ActiveTest>;
   testOrxTransport?: TestOrxTransport;
   mcpTransport?: SSEServerTransport;
