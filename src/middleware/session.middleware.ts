@@ -1,13 +1,12 @@
 import { sessionService } from "@/services/session.service";
+import { extractBearerToken } from "@/utils/auth";
 import { Request, Response } from "express";
 
-const sessionIdHeader = "x-dmcp-session-id";
-
 export function sessionMiddleware(req: Request, res: Response, next: () => void) {
-  const sessionId = req.headers[sessionIdHeader];
+  const sessionId = extractBearerToken(req);
     
   if (!sessionId || typeof sessionId !== 'string') {
-    res.status(400).send({ error: "Must include valid 'x-dmcp-session-id' header" });
+    res.status(400).send({ error: "Must include valid 'authorization' header" });
     return;
   }
 

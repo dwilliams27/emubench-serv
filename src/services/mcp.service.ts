@@ -1,6 +1,6 @@
 import { emulationService } from "@/services/emulation.service";
 import { sessionService } from "@/services/session.service";
-import { directionToStickPosition, durationToFrames } from "@/utils";
+import { directionToStickPosition, durationToFrames } from "@/utils/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";

@@ -37,11 +37,8 @@ export class CloudRunService {
   private servicesClient: ServicesClient;
   private projectId: string;
 
-  constructor(projectId?: string) {
-    if (!projectId) {
-      throw new Error('Could not find project ID');
-    }
-    this.projectId = projectId;
+  constructor() {
+    this.projectId = "emubench-459802";
     this.servicesClient = new ServicesClient();
   }
 
@@ -193,6 +190,6 @@ export class CloudRunService {
   }
 }
 
-const cloudRunService = new CloudRunService(process.env.PROJECT_ID);
+const cloudRunService = new CloudRunService();
 
 export { cloudRunService };

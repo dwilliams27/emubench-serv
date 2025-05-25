@@ -6,6 +6,9 @@ import * as mcpController from '@/controllers/mcp';
 import * as testController from '@/controllers/test';
 import { sessionService } from '@/services/session.service';
 import { mcpService } from '@/services/mcp.service';
+import { configDotenv } from 'dotenv';
+
+configDotenv();
 
 const app = express();
 app.use(express.json());
@@ -20,6 +23,10 @@ app.use(cors({
 app.use(cloudRunMiddleware);
 app.use(sessionMiddleware);
 
+app.get('/health', (req, res) => {
+  res.status(200).send({ status: 'ok' });
+});
+
 // MCP
 app.get('/mcp', mcpController.getMcpHandler);
 app.post('/messages', mcpController.postMessagesHandler);
@@ -29,7 +36,7 @@ app.get('/test-orx/events', testController.testOrxMessages);
 app.post('/test-orx/setup', testController.setupTest);
 app.post('/test-orx/start', testController.startTest);
 
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {
   console.log(`🐬🛜 dolphin-mcp-serv listening on port ${PORT}`);
 });

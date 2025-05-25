@@ -1,6 +1,5 @@
 import { TestConfig, TestState } from "@/types/session";
 import { genId, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
-import { auth } from "@modelcontextprotocol/sdk/client/auth.js";
 import { Request, Response } from "express";
 
 // Async sends test results
