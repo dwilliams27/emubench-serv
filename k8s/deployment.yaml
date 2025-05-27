@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emubench-serv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: emubench-serv
+  template:
+    metadata:
+      labels:
+        app: emubench-serv
+    spec:
+      serviceAccountName: emubench-serv-sa
+      tolerations:
+      - key: "architecture"
+        operator: "Equal"
+        value: "arm64"
+        effect: "NoSchedule"
+      - key: "kubernetes.io/arch"
+        operator: "Equal"
+        value: "arm64"
+        effect: "NoSchedule"
+      nodeSelector:
+        architecture: arm64
+      containers:
+      - name: emubench-serv
+        image: us-docker.pkg.dev/emubench-459802/gcr.io/emubench-serv:latest
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emubench-serv
+spec:
+  selector:
+    app: emubench-serv
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer

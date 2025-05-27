@@ -1,12 +1,13 @@
 {
   "name": "emubench-serv",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths",
     "start": "node dist/index.js",
-    "debug-mcp": "npx @modelcontextprotocol/inspector node ./dist/index.js",
+    "debug-mcp": "npx @modelcontextprotocol/inspector ./dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [],
@@ -15,21 +16,26 @@
   "description": "",
   "dependencies": {
     "@google-cloud/run": "^2.1.0",
+    "@kubernetes/client-node": "^1.2.0",
     "@modelcontextprotocol/sdk": "^1.10.1",
     "@types/cors": "^2.8.18",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "google-auth-library": "^10.0.0-rc.2",
-    "nanoid": "^5.1.5",
     "pouchdb": "^9.0.0",
-    "ws": "^8.18.1"
+    "tsconfig-paths": "^4.2.0",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.1",
+    "zod": "^3.25.28"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.1",
     "@types/ws": "^8.18.1",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   }

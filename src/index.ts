@@ -1,27 +1,31 @@
 import express from 'express';
 import cors from 'cors';
-import { cloudRunMiddleware } from '@/middleware/cloud-run.middleware';
 import { sessionMiddleware } from '@/middleware/session.middleware';
 import * as mcpController from '@/controllers/mcp';
 import * as testController from '@/controllers/test';
 import { sessionService } from '@/services/session.service';
 import { mcpService } from '@/services/mcp.service';
 import { configDotenv } from 'dotenv';
+import { containerManagerMiddleware } from '@/middleware/container-manager.middleware';
+import { emulationMiddleware } from '@/middleware/emulation.middleware';
+import { mcpMiddleware } from '@/middleware/mcp.middleware';
 
 configDotenv();
 
 const app = express();
 app.use(express.json());
 
-app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-dmcp-session-id'],
-  credentials: true
-}));
+// app.use(cors({
+//   origin: 'http://localhost:5173',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'x-dmcp-session-id'],
+//   credentials: true
+// }));
 
-app.use(cloudRunMiddleware);
 app.use(sessionMiddleware);
+app.use(containerManagerMiddleware);
+app.use(emulationMiddleware);
+app.use(mcpMiddleware);
 
 app.get('/health', (req, res) => {
   res.status(200).send({ status: 'ok' });

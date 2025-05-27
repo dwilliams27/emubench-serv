@@ -30,7 +30,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
   const testConfig: TestConfig = req.body.config;
   const testId = genId(TEST_ID);
-  const testAuthKey = genId(TEST_AUTH_KEY_ID, 32);
+  const testAuthKey = genId(TEST_AUTH_KEY_ID);
   const testState: TestState = {
     setup: false,
     started: false,
@@ -38,7 +38,7 @@ export const setupTest = async (req: Request, res: Response) => {
     contextMemWatches: {},
     endStateMemWatches: {}
   };
-  const testContainer = await req.cloudRunService.deployGameContainer(testId, testConfig);
+  const testContainer = await req.containerManagerService.createContainer(testId, testConfig);
 
   const activeTest = {
     id: testId,

@@ -18,6 +18,7 @@ export interface TestConfig {
   autoStart: boolean;
   gameId: string;
   gamePath: string;
+  platform: 'gamecube';
   startStateFilename: string;
   contextMemWatches: Record<string, MemoryWatch>;
   endStateMemWatches: Record<string, MemoryWatch>;
