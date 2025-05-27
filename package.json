@@ -4,7 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "NODE_ENV=development tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths",
     "start": "node dist/index.js",
     "debug-mcp": "npx @modelcontextprotocol/inspector ./dist/index.js",

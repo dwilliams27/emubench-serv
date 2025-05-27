@@ -42,7 +42,7 @@ app.post('/test-orx/start', testController.startTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {
-  console.log(`🐬🛜 dolphin-mcp-serv listening on port ${PORT}`);
+  console.log(`🪿🛜 emubench-serv listening on port ${PORT}`);
 });
 
 process.on('SIGINT', async () => {

@@ -7,12 +7,27 @@ export class ContainerManagerService {
 
   constructor() {
     const kc = new k8s.KubeConfig();
-    if (process.env.NODE_ENV === 'development') {
-      kc.loadFromDefault();
-    } else {
-      kc.loadFromCluster();
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        kc.loadFromDefault();
+      } else {
+        kc.loadFromCluster();
+      }
+      
+      // Verify the configuration is valid
+      const currentContext = kc.getCurrentContext();
+      if (!currentContext) {
+        throw new Error('No current context found in kubeconfig');
+      }
+      
+      console.log(`Using Kubernetes context: ${currentContext}`);
+      console.log(`Server URL: ${kc.getCurrentCluster()?.server}`);
+      
+      this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+    } catch (error) {
+      console.error('Failed to initialize Kubernetes client:', error);
+      throw error;
     }
-    this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
   }
 
   async createContainer(
@@ -40,6 +55,8 @@ export class ContainerManagerService {
         containers: [{
           name: 'container',
           image: `gcr.io/emubench-459802/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
+          imagePullPolicy: process.env.NODE_ENV === 'development' ? 'IfNotPresent' : 'Always',
+          env: [{ name: "SAVE_STATE_FILE", value: testConfig.startStateFilename }],
           ports: [{ containerPort: 58111 }]
         }]
       }
