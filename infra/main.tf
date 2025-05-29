@@ -120,18 +120,18 @@ resource "google_project_iam_member" "gke_node_pool_monitoring_resource_metadata
   member  = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
 }
 
-resource "google_container_node_pool" "arm_nodes" {
-  name       = "arm-node-pool"
-  location   = var.zones[0]  # Use same zone as cluster
+# Spot node pool for all workloads
+resource "google_container_node_pool" "arm_spot_nodes" {
+  name       = "arm-spot-node-pool"
+  location   = var.zones[0]
   cluster    = google_container_cluster.primary.name
-  node_count = 1
+  node_count = 0
 
-  # Explicitly specify the zones where nodes can be created
   node_locations = var.zones
 
   autoscaling {
-    min_node_count = 1
-    max_node_count = 3
+    min_node_count = 0
+    max_node_count = 2
   }
 
   management {
@@ -140,11 +140,12 @@ resource "google_container_node_pool" "arm_nodes" {
   }
 
   node_config {
-    machine_type = "t2a-standard-2" 
+    spot = true
+    
+    machine_type = "t2a-standard-2"
     disk_size_gb = 50
     disk_type    = "pd-ssd"
     
-    # Use the dedicated service account for the node pool
     service_account = google_service_account.gke_node_pool_sa.email
 
     oauth_scopes = [
@@ -159,6 +160,7 @@ resource "google_container_node_pool" "arm_nodes" {
 
     labels = {
       architecture = "arm64"
+      instance-type = "spot"
     }
 
     taint {
