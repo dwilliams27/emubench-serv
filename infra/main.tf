@@ -31,6 +31,14 @@ resource "google_project_service" "compute" {
   service = "compute.googleapis.com"
 }
 
+resource "google_project_service" "cloudbuild" {
+  service = "cloudbuild.googleapis.com"
+}
+
+resource "google_project_service" "run" {
+  service = "run.googleapis.com"
+}
+
 resource "google_compute_network" "vpc" {
   name                    = "${var.cluster_name}-vpc"
   auto_create_subnetworks = false
@@ -74,6 +82,13 @@ resource "google_container_cluster" "primary" {
   # Enable Workload Identity for better security
   workload_identity_config {
     workload_pool = "emubench-459802.svc.id.goog"
+  }
+
+  # Enable Cloud Storage FUSE CSI driver
+  addons_config {
+    gcs_fuse_csi_driver_config {
+      enabled = true
+    }
   }
 
   depends_on = [
@@ -203,11 +218,120 @@ resource "google_project_iam_member" "emubench_workload_artifact_registry_reader
   member  = "serviceAccount:${google_service_account.emubench_workload_sa.email}"
 }
 
-# Workload Identity binding
-resource "google_service_account_iam_member" "workload_identity_binding" {
-  service_account_id = google_service_account.emubench_workload_sa.name
-  role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:emubench-459802.svc.id.goog[default/emubench-serv-sa]"
+# Grant storage permissions to the workload service account for FUSE mounting
+resource "google_project_iam_member" "emubench_workload_storage_admin" {
+  project = "emubench-459802"
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.emubench_workload_sa.email}"
+}
+
+# Google Service Account for Cloud Run service
+resource "google_service_account" "cloud_run_sa" {
+  account_id   = "emubench-cloud-run-sa"
+  display_name = "Emubench Cloud Run Service Account"
+  description  = "Service account for Cloud Run service with GKE cluster access"
+}
+
+# Grant GKE cluster access to Cloud Run service account
+resource "google_project_iam_member" "cloud_run_gke_admin" {
+  project = "emubench-459802"
+  role    = "roles/container.clusterAdmin"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+# Grant container admin permissions to manage pods
+resource "google_project_iam_member" "cloud_run_gke_developer" {
+  project = "emubench-459802"
+  role    = "roles/container.developer"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "cloud_run_artifact_registry_reader" {
+  project = "emubench-459802"
+  role    = "roles/artifactregistry.reader"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+# Google Service Account for Cloud Build
+resource "google_service_account" "cloud_build_sa" {
+  account_id   = "emubench-cloud-build-sa"
+  display_name = "Emubench Cloud Build Service Account"
+  description  = "Service account for Cloud Build with container registry and logging permissions"
+}
+
+# Grant Cloud Build service account permissions to push to Container Registry
+resource "google_project_iam_member" "cloud_build_storage_admin" {
+  project = "emubench-459802"
+  role    = "roles/storage.admin"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Grant Cloud Build service account permissions to write logs
+resource "google_project_iam_member" "cloud_build_logs_writer" {
+  project = "emubench-459802"
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Grant Cloud Build service account permissions for Cloud Run deployment
+resource "google_project_iam_member" "cloud_build_run_developer" {
+  project = "emubench-459802"
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Grant Cloud Build service account permissions to use other service accounts
+resource "google_project_iam_member" "cloud_build_service_account_user" {
+  project = "emubench-459802"
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Grant Cloud Build service account permissions for Artifact Registry
+resource "google_project_iam_member" "cloud_build_artifact_registry_writer" {
+  project = "emubench-459802"
+  role    = "roles/artifactregistry.writer"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Grant Cloud Build service account additional permissions for Container Registry
+resource "google_project_iam_member" "cloud_build_storage_object_admin" {
+  project = "emubench-459802"
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
+}
+
+# Google Cloud Storage bucket for screenshots and session data
+resource "google_storage_bucket" "emubench_sessions" {
+  name     = "emubench-sessions"
+  location = "US"
+  
+  # Enable uniform bucket-level access for better security
+  uniform_bucket_level_access = true
+  
+  # Prevent accidental deletion
+  lifecycle {
+    prevent_destroy = true
+  }
+  
+  # Enable versioning for important data
+  versioning {
+    enabled = true
+  }
+}
+
+# Grant storage permissions to workload service account for bucket access
+resource "google_storage_bucket_iam_member" "emubench_sessions_workload_admin" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.emubench_workload_sa.email}"
+}
+
+# Grant storage permissions to Cloud Run service account for bucket access (if needed)
+resource "google_storage_bucket_iam_member" "emubench_sessions_cloud_run_admin" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
 resource "kubernetes_service_account" "emubench_serv" {
@@ -254,4 +378,72 @@ resource "kubernetes_cluster_role_binding" "emubench_serv_container_manager" {
     name      = kubernetes_service_account.emubench_serv.metadata[0].name
     namespace = "default"
   }
+}
+
+# Cloud Run service
+resource "google_cloud_run_service" "emubench_serv" {
+  name     = "emubench-serv"
+  location = "us-central1"
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/emubench-459802/emubench-serv"
+        
+        ports {
+          container_port = 8080
+        }
+        
+        env {
+          name  = "GKE_CLUSTER_NAME"
+          value = google_container_cluster.primary.name
+        }
+        
+        env {
+          name  = "GKE_CLUSTER_LOCATION"
+          value = google_container_cluster.primary.location
+        }
+        
+        env {
+          name  = "GCP_PROJECT_ID"
+          value = "emubench-459802"
+        }
+        
+        resources {
+          limits = {
+            cpu    = "1000m"
+            memory = "512Mi"
+          }
+        }
+      }
+      
+      service_account_name = google_service_account.cloud_run_sa.email
+      
+      # Allow up to 40 concurrent instances
+      container_concurrency = 80
+    }
+    
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/maxScale" = "40"
+      }
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+
+  # Ensure the service account is created first
+  depends_on = [google_service_account.cloud_run_sa]
+}
+
+# Grant access to authorized users
+resource "google_cloud_run_service_iam_member" "allow_authorized_users" {
+  for_each = toset(var.authorized_emails)
+  service  = google_cloud_run_service.emubench_serv.name
+  location = google_cloud_run_service.emubench_serv.location
+  role     = "roles/run.invoker"
+  member   = "user:${each.value}"
 }

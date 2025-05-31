@@ -6,21 +6,25 @@ steps:
   # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/emubench-serv']
-  
-  # Deploy container image to Cloud Run
+
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
-      - 'deploy'
+      - 'services'
+      - 'update'
       - 'emubench-serv'
       - '--image'
       - 'gcr.io/$PROJECT_ID/emubench-serv'
-      - '--platform'
-      - 'managed'
       - '--region'
       - 'us-central1'
-      - '--allow-unauthenticated'
+
+# Specify the service account for Cloud Build
+serviceAccount: 'projects/$PROJECT_ID/serviceAccounts/emubench-cloud-build-sa@$PROJECT_ID.iam.gserviceaccount.com'
+
+# Configure logging to use Cloud Logging only
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 # Store images in Google Container Registry
 images:

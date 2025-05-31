@@ -15,3 +15,9 @@ variable "cluster_name" {
   type        = string
   default     = "emubench-arm-cluster"
 }
+
+variable "authorized_emails" {
+  description = "List of email addresses authorized to access the Cloud Run service"
+  type        = list(string)
+  default     = []
+}
