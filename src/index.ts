@@ -9,6 +9,7 @@ import { configDotenv } from 'dotenv';
 import { containerManagerMiddleware } from '@/middleware/container-manager.middleware';
 import { emulationMiddleware } from '@/middleware/emulation.middleware';
 import { mcpMiddleware } from '@/middleware/mcp.middleware';
+import { authMiddleware } from '@/middleware/auth.middleware';
 
 configDotenv();
 
@@ -32,13 +33,13 @@ app.get('/health', (req, res) => {
 });
 
 // MCP
-app.get('/mcp', mcpController.getMcpHandler);
-app.post('/messages', mcpController.postMessagesHandler);
+app.get('/mcp', authMiddleware, mcpController.getMcpHandler);
+app.post('/messages', authMiddleware, mcpController.postMessagesHandler);
 
 // test-orx 
-app.get('/test-orx/events', testController.testOrxMessages);
-app.post('/test-orx/setup', testController.setupTest);
-app.post('/test-orx/start', testController.startTest);
+app.get('/test-orx/events', authMiddleware, testController.testOrxMessages);
+app.post('/test-orx/setup', authMiddleware, testController.setupTest);
+app.post('/test-orx/start', authMiddleware, testController.startTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {
