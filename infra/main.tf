@@ -232,14 +232,6 @@ resource "google_service_account" "cloud_run_sa" {
   description  = "Service account for Cloud Run service with GKE cluster access"
 }
 
-# Grant GKE cluster access to Cloud Run service account
-resource "google_project_iam_member" "cloud_run_gke_admin" {
-  project = "emubench-459802"
-  role    = "roles/container.clusterAdmin"
-  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
-}
-
-# Grant container admin permissions to manage pods
 resource "google_project_iam_member" "cloud_run_gke_developer" {
   project = "emubench-459802"
   role    = "roles/container.developer"
@@ -334,49 +326,139 @@ resource "google_storage_bucket_iam_member" "emubench_sessions_cloud_run_admin" 
   member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
-resource "kubernetes_service_account" "emubench_serv" {
+
+# Create dedicated namespace for emulator containers
+resource "kubernetes_namespace" "emubench_containers" {
   metadata {
-    name      = "emubench-serv-sa"
-    namespace = "default"
-    annotations = {
-      "iam.gke.io/gcp-service-account" = google_service_account.emubench_workload_sa.email
+    name = "emubench-containers"
+    labels = {
+      purpose = "emulator-sessions"
     }
   }
 }
 
-resource "kubernetes_cluster_role" "container_manager" {
+# Service account specifically for emulator container management
+resource "kubernetes_service_account" "emubench_container_manager" {
   metadata {
-    name = "container-manager"
+    name      = "emubench-container-manager-sa"
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
+    annotations = {
+      "iam.gke.io/gcp-service-account" = google_service_account.cloud_run_sa.email
+    }
+  }
+}
+
+# Allow the Cloud Run service account to impersonate the Kubernetes service account
+resource "google_service_account_iam_member" "cloud_run_workload_identity" {
+  service_account_id = google_service_account.cloud_run_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:emubench-459802.svc.id.goog[${kubernetes_namespace.emubench_containers.metadata[0].name}/${kubernetes_service_account.emubench_container_manager.metadata[0].name}]"
+}
+
+# Restrictive role that only allows pod management in the emubench namespace
+resource "kubernetes_role" "emubench_container_manager" {
+  metadata {
+    name      = "emubench-container-manager"
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
   }
 
   rule {
     api_groups = [""]
-    resources  = ["pods", "services"]
+    resources  = ["pods", "pods/log", "pods/exec"]
     verbs      = ["create", "delete", "get", "list", "watch"]
   }
 
   rule {
-    api_groups = ["apps"]
-    resources  = ["deployments"]
-    verbs      = ["create", "delete", "get", "list", "watch"]
+    api_groups = [""]
+    resources  = ["services"]
+    verbs      = ["create", "delete", "get", "list"]
+  }
+
+  # Limit to only reading configmaps/secrets, not creating them
+  rule {
+    api_groups = [""]
+    resources  = ["configmaps", "secrets"]
+    verbs      = ["get", "list"]
   }
 }
 
-resource "kubernetes_cluster_role_binding" "emubench_serv_container_manager" {
+# Bind the role to the service account
+resource "kubernetes_role_binding" "emubench_container_manager" {
   metadata {
-    name = "emubench-serv-container-manager"
+    name      = "emubench-container-manager-binding"
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
   }
 
   role_ref {
     api_group = "rbac.authorization.k8s.io"
-    kind      = "ClusterRole"
-    name      = kubernetes_cluster_role.container_manager.metadata[0].name
+    kind      = "Role"
+    name      = kubernetes_role.emubench_container_manager.metadata[0].name
   }
 
   subject {
     kind      = "ServiceAccount"
-    name      = kubernetes_service_account.emubench_serv.metadata[0].name
-    namespace = "default"
+    name      = kubernetes_service_account.emubench_container_manager.metadata[0].name
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
+  }
+}
+
+resource "kubernetes_resource_quota" "emubench_containers_quota" {
+  metadata {
+    name      = "emubench-containers-quota"
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
+  }
+
+  spec {
+    hard = {
+      "requests.cpu"    = "4"      # Max 4 CPU cores
+      "requests.memory" = "8Gi"    # Max 8GB RAM
+      "limits.cpu"      = "8"      # Max 8 CPU cores burst
+      "limits.memory"   = "16Gi"   # Max 16GB RAM burst
+      "pods"           = "10"      # Max 10 concurrent pods
+      "persistentvolumeclaims" = "0"  # No persistent storage
+    }
+  }
+}
+
+resource "kubernetes_network_policy" "emubench_containers_network_policy" {
+  metadata {
+    name      = "emubench-containers-network-policy"
+    namespace = kubernetes_namespace.emubench_containers.metadata[0].name
+  }
+
+  spec {
+    pod_selector {}
+    
+    policy_types = ["Egress"]
+    
+    # Allow DNS resolution
+    egress {
+      ports {
+        port     = "53"
+        protocol = "UDP"
+      }
+      to {
+        namespace_selector {}
+      }
+    }
+    
+    # Allow HTTPS to Google APIs only
+    egress {
+      ports {
+        port     = "443"
+        protocol = "TCP"
+      }
+      to {
+        ip_block {
+          cidr = "0.0.0.0/0"
+          except = [
+            "10.0.0.0/8",
+            "172.16.0.0/12",
+            "192.168.0.0/16"
+          ]
+        }
+      }
+    }
   }
 }
 
@@ -405,8 +487,63 @@ resource "google_cloud_run_service" "emubench_serv" {
         }
         
         env {
-          name  = "GCP_PROJECT_ID"
+          name  = "PROJECT_ID"
           value = "emubench-459802"
+        }
+        
+        env {
+          name  = "DB_PASSWORD"
+          value = var.db_password
+        }
+        
+        env {
+          name  = "DB_SERVICE_ROLE_KEY"
+          value = var.db_service_role_key
+        }
+        
+        env {
+          name  = "DB_URL"
+          value = var.db_url
+        }
+        
+        env {
+          name  = "SUPABASE_URL"
+          value = var.supabase_url
+        }
+        
+        env {
+          name  = "SUPABASE_ANON_KEY"
+          value = var.supabase_anon_key
+        }
+        
+        env {
+          name  = "SUPABASE_SERVICE_ROLE_KEY"
+          value = var.supabase_service_role_key
+        }
+        
+        env {
+          name  = "GOOGLE_CLIENT_ID"
+          value = var.google_client_id
+        }
+        
+        env {
+          name  = "EMUBENCH_NAMESPACE"
+          value = kubernetes_namespace.emubench_containers.metadata[0].name
+        }
+        
+        env {
+          name  = "EMUBENCH_SERVICE_ACCOUNT"
+          value = kubernetes_service_account.emubench_container_manager.metadata[0].name
+        }
+        
+        env {
+          name  = "MAX_CONCURRENT_CONTAINERS"
+          value = "5"
+        }
+        
+        env {
+          name  = "CONTAINER_TIMEOUT_MINUTES"
+          value = "30"
         }
         
         resources {
@@ -437,13 +574,4 @@ resource "google_cloud_run_service" "emubench_serv" {
 
   # Ensure the service account is created first
   depends_on = [google_service_account.cloud_run_sa]
-}
-
-# Grant access to authorized users
-resource "google_cloud_run_service_iam_member" "allow_authorized_users" {
-  for_each = toset(var.authorized_emails)
-  service  = google_cloud_run_service.emubench_serv.name
-  location = google_cloud_run_service.emubench_serv.location
-  role     = "roles/run.invoker"
-  member   = "user:${each.value}"
 }

@@ -21,3 +21,50 @@ variable "authorized_emails" {
   type        = list(string)
   default     = []
 }
+
+# Database and Supabase configuration variables
+variable "db_password" {
+  description = "Database password"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_service_role_key" {
+  description = "Database service role key"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_url" {
+  description = "Database URL"
+  type        = string
+}
+
+variable "supabase_url" {
+  description = "Supabase URL"
+  type        = string
+}
+
+variable "supabase_anon_key" {
+  description = "Supabase anonymous key"
+  type        = string
+  sensitive   = true
+}
+
+variable "supabase_service_role_key" {
+  description = "Supabase service role key"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_client_id" {
+  description = "Google OAuth Client ID"
+  type        = string
+  sensitive   = true
+}
+
+variable "project_id" {
+  description = "GCP Project ID"
+  type        = string
+  default     = "emubench-459802"
+}

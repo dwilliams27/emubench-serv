@@ -4,7 +4,7 @@ import { GoogleAuth } from 'google-auth-library';
 
 export class ContainerManagerService {
   private k8sApi!: k8s.CoreV1Api;
-  private namespace: string = 'default';
+  private namespace: string = process.env.EMUBENCH_NAMESPACE || 'default';
   private initialized: boolean = false;
 
   constructor() {
@@ -47,18 +47,18 @@ export class ContainerManagerService {
   }
 
   private async initializeCloudRunKubeConfig(kc: k8s.KubeConfig) {
-    if (!process.env.GKE_CLUSTER_NAME || !process.env.GKE_CLUSTER_LOCATION || !process.env.GCP_PROJECT_ID) {
-      throw new Error('Missing required environment variables: GKE_CLUSTER_NAME, GKE_CLUSTER_LOCATION, GCP_PROJECT_ID');
+    if (!process.env.GKE_CLUSTER_NAME || !process.env.GKE_CLUSTER_LOCATION || !process.env.PROJECT_ID) {
+      throw new Error('Missing required environment variables: GKE_CLUSTER_NAME, GKE_CLUSTER_LOCATION, PROJECT_ID');
     }
 
-    const projectId = process.env.GCP_PROJECT_ID;
+    const projectId = process.env.PROJECT_ID;
     const clusterName = process.env.GKE_CLUSTER_NAME;
     const clusterLocation = process.env.GKE_CLUSTER_LOCATION;
 
     try {
       // Use Google Cloud APIs to get cluster info
       const auth = new GoogleAuth({
-        scopes: ['https://www.googleapis.com/auth/cloud-platform']
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
       });
 
       // Get an auth client and access token
@@ -167,7 +167,7 @@ export class ContainerManagerService {
             }
           }
         }],
-        serviceAccountName: 'emubench-serv-sa'
+        serviceAccountName: process.env.EMUBENCH_SERVICE_ACCOUNT || 'default',
       }
     };
 
