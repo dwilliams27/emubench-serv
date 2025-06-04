@@ -14,11 +14,15 @@ export class ContainerManagerService {
   private async initialize() {
     const kc = new k8s.KubeConfig();
     try {
+      console.log(`Initializing ContainerManagerService in ${process.env.NODE_ENV || 'unknown'} environment`);
+      
       if (process.env.NODE_ENV === 'development') {
         // Development: use local kubeconfig
+        console.log('Loading kubeconfig from default location');
         kc.loadFromDefault();
       } else {
         // Production (Cloud Run): authenticate with GKE using service account
+        console.log('Initializing Cloud Run kubeconfig');
         await this.initializeCloudRunKubeConfig(kc);
       }
       
@@ -28,14 +32,28 @@ export class ContainerManagerService {
         throw new Error('No current context found in kubeconfig');
       }
       
+      const currentCluster = kc.getCurrentCluster();
       console.log(`Using Kubernetes context: ${currentContext}`);
-      console.log(`Server URL: ${kc.getCurrentCluster()?.server}`);
+      console.log(`Server URL: ${currentCluster?.server}`);
+      console.log(`Cluster name: ${currentCluster?.name}`);
+      console.log(`Skip TLS verify: ${currentCluster?.skipTLSVerify}`);
+      console.log(`Target namespace: ${this.namespace}`);
       
       this.k8sApi = kc.makeApiClient(k8s.CoreV1Api);
       this.initialized = true;
       console.log('Kubernetes client initialized successfully');
     } catch (error) {
       console.error('Failed to initialize Kubernetes client:', error);
+      
+      // Log environment variables for debugging (without sensitive data)
+      console.error('Environment context:', {
+        NODE_ENV: process.env.NODE_ENV,
+        hasProjectId: !!process.env.PROJECT_ID,
+        hasClusterName: !!process.env.GKE_CLUSTER_NAME,
+        hasClusterLocation: !!process.env.GKE_CLUSTER_LOCATION,
+        namespace: this.namespace
+      });
+      
       throw error;
     }
   }
@@ -55,6 +73,8 @@ export class ContainerManagerService {
     const clusterName = process.env.GKE_CLUSTER_NAME;
     const clusterLocation = process.env.GKE_CLUSTER_LOCATION;
 
+    console.log(`Initializing kubeconfig for cluster: ${clusterName} in ${clusterLocation}`);
+
     try {
       // Use Google Cloud APIs to get cluster info
       const auth = new GoogleAuth({
@@ -69,8 +89,12 @@ export class ContainerManagerService {
         throw new Error('Failed to get access token');
       }
 
+      console.log('Successfully obtained access token');
+
       // Get cluster information using REST API
       const clusterUrl = `https://container.googleapis.com/v1/projects/${projectId}/locations/${clusterLocation}/clusters/${clusterName}`;
+      console.log(`Fetching cluster info from: ${clusterUrl}`);
+      
       const response = await fetch(clusterUrl, {
         headers: {
           'Authorization': `Bearer ${accessToken.token}`,
@@ -79,19 +103,41 @@ export class ContainerManagerService {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Cluster API response error: ${response.status} ${response.statusText}`);
+        console.error(`Error details: ${errorText}`);
         throw new Error(`Failed to get cluster info: ${response.status} ${response.statusText}`);
       }
 
       const cluster = await response.json();
+      console.log(`Cluster endpoint: ${cluster.endpoint}`);
+      console.log(`CA certificate length: ${cluster.masterAuth?.clusterCaCertificate?.length || 'undefined'}`);
+      
       if (!cluster.endpoint || !cluster.masterAuth?.clusterCaCertificate) {
+        console.error('Missing cluster data:', {
+          hasEndpoint: !!cluster.endpoint,
+          hasCaCert: !!cluster.masterAuth?.clusterCaCertificate,
+          clusterStatus: cluster.status
+        });
         throw new Error('Unable to get cluster endpoint or CA certificate');
       }
+
+      const serverUrl = `https://${cluster.endpoint}`;
+      console.log(`Setting up kubeconfig with server: ${serverUrl}`);
+      
+      // For private clusters, prefer private endpoint if available and we're in VPC
+      const usePrivateEndpoint = process.env.USE_PRIVATE_ENDPOINT === 'true';
+      const finalServerUrl = usePrivateEndpoint && cluster.privateClusterConfig?.privateEndpoint 
+        ? `https://${cluster.privateClusterConfig.privateEndpoint}`
+        : serverUrl;
+      
+      console.log(`Using ${usePrivateEndpoint ? 'private' : 'public'} endpoint: ${finalServerUrl}`);
 
       kc.loadFromOptions({
         clusters: [
           {
             name: clusterName,
-            server: `https://${cluster.endpoint}`,
+            server: finalServerUrl,
             certificateAuthorityData: cluster.masterAuth.clusterCaCertificate,
           }
         ],
@@ -112,6 +158,36 @@ export class ContainerManagerService {
       });
 
       console.log(`Successfully configured kubeconfig for cluster: ${clusterName}`);
+      
+      // Test the connection
+      console.log('Testing Kubernetes API connection...');
+      const testApi = kc.makeApiClient(k8s.CoreV1Api);
+      try {
+        await testApi.listNamespacedPod({ namespace: this.namespace, limit: 1 });
+        console.log('Kubernetes API connection test successful');
+      } catch (testError) {
+        console.error('Kubernetes API connection test failed:', testError);
+        
+        // Log additional certificate debugging info
+        if (testError instanceof Error && testError.message.includes('certificate')) {
+          console.error('Certificate error details:', {
+            message: testError.message,
+            code: (testError as any).code,
+            serverUrl: finalServerUrl,
+            caCertLength: cluster.masterAuth.clusterCaCertificate.length
+          });
+          
+          // Try to decode and inspect the certificate
+          try {
+            const certBuffer = Buffer.from(cluster.masterAuth.clusterCaCertificate, 'base64');
+            console.log('Certificate preview (first 100 chars):', certBuffer.toString('utf8').substring(0, 100));
+          } catch (certError) {
+            console.error('Failed to decode certificate:', certError);
+          }
+        }
+        
+        throw testError;
+      }
     } catch (error) {
       console.error('Failed to configure kubeconfig for Cloud Run:', error);
       throw error;

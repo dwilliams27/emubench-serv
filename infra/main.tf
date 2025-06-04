@@ -39,6 +39,10 @@ resource "google_project_service" "run" {
   service = "run.googleapis.com"
 }
 
+resource "google_project_service" "vpcaccess" {
+  service = "vpcaccess.googleapis.com"
+}
+
 resource "google_compute_network" "vpc" {
   name                    = "${var.cluster_name}-vpc"
   auto_create_subnetworks = false
@@ -51,6 +55,9 @@ resource "google_compute_subnetwork" "subnet" {
   region        = var.region
   network       = google_compute_network.vpc.name
 
+  # Enable private Google access for nodes to reach Google APIs
+  private_ip_google_access = true
+
   secondary_ip_range {
     range_name    = "pods"
     ip_cidr_range = "10.1.0.0/16"
@@ -60,6 +67,50 @@ resource "google_compute_subnetwork" "subnet" {
     range_name    = "services"
     ip_cidr_range = "10.2.0.0/16"
   }
+}
+
+# Subnet for VPC connector
+resource "google_compute_subnetwork" "vpc_connector" {
+  name          = "emubench-vpc-connector-subnet"
+  ip_cidr_range = "10.3.0.0/28"  # Small subnet for VPC connector
+  region        = var.region
+  network       = google_compute_network.vpc.name
+}
+
+# VPC Access Connector for Cloud Run
+resource "google_vpc_access_connector" "connector" {
+  name           = "emubench-vpc-connector"
+  region         = var.region
+  
+  subnet {
+    name = google_compute_subnetwork.vpc_connector.name
+  }
+  
+  # Machine type and scaling
+  machine_type   = "e2-micro"
+  min_instances  = 2
+  max_instances  = 3
+  
+  depends_on = [
+    google_project_service.vpcaccess,
+    google_compute_subnetwork.vpc_connector
+  ]
+}
+
+# Firewall rule to allow VPC connector to access GKE master
+resource "google_compute_firewall" "allow_vpc_connector_to_gke" {
+  name    = "${var.cluster_name}-allow-vpc-connector-to-gke"
+  network = google_compute_network.vpc.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["443", "10250"]
+  }
+
+  source_ranges = [google_compute_subnetwork.vpc_connector.ip_cidr_range]
+  target_tags   = ["gke-${var.cluster_name}"]
+  
+  description = "Allow VPC connector to access GKE master and nodes"
 }
 
 # GKE Cluster
@@ -73,6 +124,30 @@ resource "google_container_cluster" "primary" {
 
   network    = google_compute_network.vpc.name
   subnetwork = google_compute_subnetwork.subnet.name
+
+  # Private cluster configuration
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false  # Keep public endpoint for Cloud Run access
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+    
+    master_global_access_config {
+      enabled = true  # Allow access from other regions
+    }
+  }
+
+  # Master authorized networks - allow VPC connector subnet and your local IP for management
+  master_authorized_networks_config {
+    cidr_blocks {
+      cidr_block   = google_compute_subnetwork.vpc_connector.ip_cidr_range
+      display_name = "VPC Connector Subnet"
+    }
+    # Add your local IP for kubectl access during development
+    # cidr_blocks {
+    #   cidr_block   = "X.X.X.X/32"
+    #   display_name = "Development machine"
+    # }
+  }
 
   ip_allocation_policy {
     cluster_secondary_range_name  = "pods"
@@ -546,6 +621,11 @@ resource "google_cloud_run_service" "emubench_serv" {
           value = "30"
         }
         
+        env {
+          name  = "USE_PRIVATE_ENDPOINT"
+          value = "true"
+        }
+        
         resources {
           limits = {
             cpu    = "1000m"
@@ -563,6 +643,8 @@ resource "google_cloud_run_service" "emubench_serv" {
     metadata {
       annotations = {
         "autoscaling.knative.dev/maxScale" = "40"
+        "run.googleapis.com/vpc-access-connector" = google_vpc_access_connector.connector.id
+        "run.googleapis.com/vpc-access-egress" = "private-ranges-only"
       }
     }
   }

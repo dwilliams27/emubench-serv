@@ -34,11 +34,6 @@ output "workload_service_account_email" {
   value       = google_service_account.emubench_workload_sa.email
 }
 
-output "kubernetes_service_account_name" {
-  description = "Name of the Kubernetes service account"
-  value       = kubernetes_service_account.emubench_serv.metadata[0].name
-}
-
 output "node_pool_name" {
   description = "Name of the spot node pool (handles all workloads)"
   value       = google_container_node_pool.arm_spot_nodes.name
@@ -91,4 +86,25 @@ output "cluster_ca_certificate" {
 output "cloud_run_service_url" {
   description = "URL of the deployed Cloud Run service"
   value       = google_cloud_run_service.emubench_serv.status[0].url
+}
+
+output "vpc_connector_name" {
+  description = "Name of the VPC Access Connector"
+  value       = google_vpc_access_connector.connector.name
+}
+
+output "vpc_connector_id" {
+  description = "ID of the VPC Access Connector"
+  value       = google_vpc_access_connector.connector.id
+}
+
+output "private_cluster_endpoint" {
+  description = "Private IP address of the cluster endpoint"
+  value       = google_container_cluster.primary.private_cluster_config[0].private_endpoint
+  sensitive   = true
+}
+
+output "master_ipv4_cidr_block" {
+  description = "The IP range in CIDR notation used for the hosted master network"
+  value       = google_container_cluster.primary.private_cluster_config[0].master_ipv4_cidr_block
 }
