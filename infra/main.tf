@@ -136,13 +136,11 @@ resource "google_container_cluster" "primary" {
     }
   }
 
-  # Master authorized networks - allow VPC connector subnet and your local IP for management
   master_authorized_networks_config {
     cidr_blocks {
       cidr_block   = google_compute_subnetwork.vpc_connector.ip_cidr_range
       display_name = "VPC Connector Subnet"
     }
-    # Add your local IP for kubectl access during development
     # cidr_blocks {
     #   cidr_block   = "X.X.X.X/32"
     #   display_name = "Development machine"
@@ -180,6 +178,12 @@ resource "google_service_account" "gke_node_pool_sa" {
 }
 
 # Grant necessary permissions to the node pool service account
+resource "google_project_iam_member" "gke_node_pool_default_service_account" {
+  project = "emubench-459802"
+  role    = "roles/container.defaultNodeServiceAccount"
+  member  = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
+}
+
 resource "google_project_iam_member" "gke_node_pool_storage_object_viewer" {
   project = "emubench-459802"
   role    = "roles/storage.objectViewer"
