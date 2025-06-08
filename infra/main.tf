@@ -69,82 +69,35 @@ resource "google_compute_subnetwork" "subnet" {
   }
 }
 
-# Subnet for VPC connector
-resource "google_compute_subnetwork" "vpc_connector" {
-  name          = "emubench-vpc-connector-subnet"
-  ip_cidr_range = "10.3.0.0/28"  # Small subnet for VPC connector
-  region        = var.region
-  network       = google_compute_network.vpc.name
-}
-
-# VPC Access Connector for Cloud Run
-resource "google_vpc_access_connector" "connector" {
-  name           = "emubench-vpc-connector"
-  region         = var.region
-  
-  subnet {
-    name = google_compute_subnetwork.vpc_connector.name
-  }
-  
-  # Machine type and scaling
-  machine_type   = "e2-micro"
-  min_instances  = 2
-  max_instances  = 3
-  
-  depends_on = [
-    google_project_service.vpcaccess,
-    google_compute_subnetwork.vpc_connector
-  ]
-}
-
-# Firewall rule to allow VPC connector to access GKE master
-resource "google_compute_firewall" "allow_vpc_connector_to_gke" {
-  name    = "${var.cluster_name}-allow-vpc-connector-to-gke"
-  network = google_compute_network.vpc.name
-
-  allow {
-    protocol = "tcp"
-    ports    = ["443", "10250"]
-  }
-
-  source_ranges = [google_compute_subnetwork.vpc_connector.ip_cidr_range]
-  target_tags   = ["gke-${var.cluster_name}"]
-  
-  description = "Allow VPC connector to access GKE master and nodes"
-}
-
 # GKE Cluster
 resource "google_container_cluster" "primary" {
   name     = var.cluster_name
-  location = var.zones[0]  # Use first zone as primary location
+  location = var.zones[0]
 
-  # We can't create a cluster with no node pool defined, but we want to only use separately managed node pools
   remove_default_node_pool = true
   initial_node_count       = 1
 
   network    = google_compute_network.vpc.name
   subnetwork = google_compute_subnetwork.subnet.name
 
-  # Private cluster configuration
   private_cluster_config {
     enable_private_nodes    = true
-    enable_private_endpoint = false  # Keep public endpoint for Cloud Run access
+    enable_private_endpoint = false
     master_ipv4_cidr_block  = "172.16.0.0/28"
     
     master_global_access_config {
-      enabled = true  # Allow access from other regions
+      enabled = true
     }
   }
 
   master_authorized_networks_config {
+    gcp_public_cidrs_access_enabled = true
+
+    # FIX ON PUSH
     cidr_blocks {
-      cidr_block   = google_compute_subnetwork.vpc_connector.ip_cidr_range
-      display_name = "VPC Connector Subnet"
+      cidr_block   = "70.106.197.159/32"
+      display_name = "Development machine"
     }
-    # cidr_blocks {
-    #   cidr_block   = "X.X.X.X/32"
-    #   display_name = "Development machine"
-    # }
   }
 
   ip_allocation_policy {
@@ -211,6 +164,13 @@ resource "google_project_iam_member" "gke_node_pool_monitoring_metric_writer" {
 resource "google_project_iam_member" "gke_node_pool_monitoring_resource_metadata_writer" {
   project = "emubench-459802"
   role    = "roles/stackdriver.resourceMetadata.writer"
+  member  = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
+}
+
+# Grant node pool access to Cloud Storage for FUSE CSI driver
+resource "google_project_iam_member" "gke_node_pool_storage_object_admin" {
+  project = "emubench-459802"
+  role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
 }
 
@@ -405,6 +365,37 @@ resource "google_storage_bucket_iam_member" "emubench_sessions_cloud_run_admin" 
   member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
+# Grant storage permissions to node pool service account for FUSE CSI driver
+resource "google_storage_bucket_iam_member" "emubench_sessions_node_pool_admin" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
+}
+
+# Grant legacy bucket reader to node pool service account for FUSE CSI driver
+resource "google_storage_bucket_iam_member" "emubench_sessions_node_pool_legacy_reader" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.gke_node_pool_sa.email}"
+}
+
+# Grant legacy bucket reader to workload service account for FUSE CSI driver
+resource "google_storage_bucket_iam_member" "emubench_sessions_workload_legacy_reader" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.emubench_workload_sa.email}"
+}
+
+data "google_project" "current" {
+}
+
+# Grant storage permissions using Workload Identity Federation for GKE
+resource "google_storage_bucket_iam_member" "emubench_sessions_workload_identity_admin" {
+  bucket = google_storage_bucket.emubench_sessions.name
+  role   = "roles/storage.objectAdmin"
+  member = "principal://iam.googleapis.com/projects/${data.google_project.current.number}/locations/global/workloadIdentityPools/emubench-459802.svc.id.goog/subject/ns/${kubernetes_namespace.emubench_containers.metadata[0].name}/sa/${kubernetes_service_account.emubench_container_manager.metadata[0].name}"
+}
+
 
 # Create dedicated namespace for emulator containers
 resource "kubernetes_namespace" "emubench_containers" {
@@ -422,14 +413,14 @@ resource "kubernetes_service_account" "emubench_container_manager" {
     name      = "emubench-container-manager-sa"
     namespace = kubernetes_namespace.emubench_containers.metadata[0].name
     annotations = {
-      "iam.gke.io/gcp-service-account" = google_service_account.cloud_run_sa.email
+      "iam.gke.io/gcp-service-account" = google_service_account.emubench_workload_sa.email
     }
   }
 }
 
-# Allow the Cloud Run service account to impersonate the Kubernetes service account
-resource "google_service_account_iam_member" "cloud_run_workload_identity" {
-  service_account_id = google_service_account.cloud_run_sa.name
+# Allow the Workload service account to impersonate the Kubernetes service account
+resource "google_service_account_iam_member" "workload_identity_binding" {
+  service_account_id = google_service_account.emubench_workload_sa.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "serviceAccount:emubench-459802.svc.id.goog[${kubernetes_namespace.emubench_containers.metadata[0].name}/${kubernetes_service_account.emubench_container_manager.metadata[0].name}]"
 }
@@ -625,11 +616,6 @@ resource "google_cloud_run_service" "emubench_serv" {
           value = "30"
         }
         
-        env {
-          name  = "USE_PRIVATE_ENDPOINT"
-          value = "true"
-        }
-        
         resources {
           limits = {
             cpu    = "1000m"
@@ -640,15 +626,12 @@ resource "google_cloud_run_service" "emubench_serv" {
       
       service_account_name = google_service_account.cloud_run_sa.email
       
-      # Allow up to 40 concurrent instances
-      container_concurrency = 80
+      container_concurrency = 10
     }
     
     metadata {
       annotations = {
-        "autoscaling.knative.dev/maxScale" = "40"
-        "run.googleapis.com/vpc-access-connector" = google_vpc_access_connector.connector.id
-        "run.googleapis.com/vpc-access-egress" = "private-ranges-only"
+        "autoscaling.knative.dev/maxScale" = "10"
       }
     }
   }

@@ -42,7 +42,8 @@ output "node_pool_name" {
 output "node_pool_taints" {
   description = "Taints applied to nodes - use these in tolerations"
   value = [
-    "architecture=arm64:NoSchedule"
+    "architecture=arm64:NoSchedule",
+    "kubernetes.io/arch=arm64:NoSchedule"
   ]
 }
 
@@ -51,9 +52,10 @@ output "workload_deployment_notes" {
   value = <<-EOT
     All workloads run on spot instances. Your pods need:
     1. Toleration for architecture=arm64:NoSchedule
-    2. ARM64-compatible container images
-    3. Graceful handling of spot instance preemption (30s warning)
-    4. Consider using Deployments with multiple replicas for high availability
+    2. Toleration for kubernetes.io/arch=arm64:NoSchedule  
+    3. ARM64-compatible container images
+    4. Graceful handling of spot instance preemption (30s warning)
+    5. Consider using Deployments with multiple replicas for high availability
   EOT
 }
 
@@ -86,16 +88,6 @@ output "cluster_ca_certificate" {
 output "cloud_run_service_url" {
   description = "URL of the deployed Cloud Run service"
   value       = google_cloud_run_service.emubench_serv.status[0].url
-}
-
-output "vpc_connector_name" {
-  description = "Name of the VPC Access Connector"
-  value       = google_vpc_access_connector.connector.name
-}
-
-output "vpc_connector_id" {
-  description = "ID of the VPC Access Connector"
-  value       = google_vpc_access_connector.connector.id
 }
 
 output "private_cluster_endpoint" {

@@ -76,12 +76,9 @@ export class ContainerManagerService {
     console.log(`Initializing kubeconfig for cluster: ${clusterName} in ${clusterLocation}`);
 
     try {
-      // Use Google Cloud APIs to get cluster info
       const auth = new GoogleAuth({
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
       });
-
-      // Get an auth client and access token
       const authClient = await auth.getClient();
       const accessToken = await authClient.getAccessToken();
 
@@ -91,7 +88,6 @@ export class ContainerManagerService {
 
       console.log('Successfully obtained access token');
 
-      // Get cluster information using REST API
       const clusterUrl = `https://container.googleapis.com/v1/projects/${projectId}/locations/${clusterLocation}/clusters/${clusterName}`;
       console.log(`Fetching cluster info from: ${clusterUrl}`);
       
@@ -111,7 +107,6 @@ export class ContainerManagerService {
 
       const cluster = await response.json();
       console.log(`Cluster endpoint: ${cluster.endpoint}`);
-      console.log(`CA certificate length: ${cluster.masterAuth?.clusterCaCertificate?.length || 'undefined'}`);
       
       if (!cluster.endpoint || !cluster.masterAuth?.clusterCaCertificate) {
         console.error('Missing cluster data:', {
@@ -121,24 +116,18 @@ export class ContainerManagerService {
         });
         throw new Error('Unable to get cluster endpoint or CA certificate');
       }
-
+      
       const serverUrl = `https://${cluster.endpoint}`;
+      console.log(`Using private endpoint: ${serverUrl}`);
       console.log(`Setting up kubeconfig with server: ${serverUrl}`);
-      
-      // For private clusters, prefer private endpoint if available and we're in VPC
-      const usePrivateEndpoint = process.env.USE_PRIVATE_ENDPOINT === 'true';
-      const finalServerUrl = usePrivateEndpoint && cluster.privateClusterConfig?.privateEndpoint 
-        ? `https://${cluster.privateClusterConfig.privateEndpoint}`
-        : serverUrl;
-      
-      console.log(`Using ${usePrivateEndpoint ? 'private' : 'public'} endpoint: ${finalServerUrl}`);
 
       kc.loadFromOptions({
         clusters: [
           {
             name: clusterName,
-            server: finalServerUrl,
+            server: serverUrl,
             certificateAuthorityData: cluster.masterAuth.clusterCaCertificate,
+            skipTLSVerify: true,
           }
         ],
         users: [
@@ -166,26 +155,7 @@ export class ContainerManagerService {
         await testApi.listNamespacedPod({ namespace: this.namespace, limit: 1 });
         console.log('Kubernetes API connection test successful');
       } catch (testError) {
-        console.error('Kubernetes API connection test failed:', testError);
-        
-        // Log additional certificate debugging info
-        if (testError instanceof Error && testError.message.includes('certificate')) {
-          console.error('Certificate error details:', {
-            message: testError.message,
-            code: (testError as any).code,
-            serverUrl: finalServerUrl,
-            caCertLength: cluster.masterAuth.clusterCaCertificate.length
-          });
-          
-          // Try to decode and inspect the certificate
-          try {
-            const certBuffer = Buffer.from(cluster.masterAuth.clusterCaCertificate, 'base64');
-            console.log('Certificate preview (first 100 chars):', certBuffer.toString('utf8').substring(0, 100));
-          } catch (certError) {
-            console.error('Failed to decode certificate:', certError);
-          }
-        }
-        
+        console.error('Kubernetes API connection test failed:', testError);        
         throw testError;
       }
     } catch (error) {
@@ -206,11 +176,22 @@ export class ContainerManagerService {
         labels: {
           'created-by': 'emubench-serv',
           'app': testId
+        },
+        annotations: {
+          'gke-gcsfuse/volumes': 'true',
+          'gke-gcsfuse/cpu-limit': '250m',
+          'gke-gcsfuse/memory-limit': '256Mi',
+          'gke-gcsfuse/ephemeral-storage-limit': '1Gi'
         }
       },
       spec: {
         tolerations: [{
           key: 'architecture',
+          operator: 'Equal',
+          value: 'arm64',
+          effect: 'NoSchedule'
+        }, {
+          key: 'kubernetes.io/arch',
           operator: 'Equal',
           value: 'arm64',
           effect: 'NoSchedule'
@@ -228,6 +209,16 @@ export class ContainerManagerService {
             { name: "SESSION_ID", value: testId },
           ],
           ports: [{ containerPort: 58111 }],
+          resources: {
+            requests: {
+              cpu: '500m',
+              memory: '1Gi'
+            },
+            limits: {
+              cpu: '2',
+              memory: '4Gi'
+            }
+          },
           volumeMounts: [{
             name: 'screenshots-storage',
             mountPath: '/app/emu/ScreenShots'
@@ -236,14 +227,14 @@ export class ContainerManagerService {
         volumes: [{
           name: 'screenshots-storage',
           csi: {
-            driver: 'gcs.csi.storage.gke.io',
+            driver: 'gcsfuse.csi.storage.gke.io',
             volumeAttributes: {
               bucketName: 'emubench-sessions',
               mountOptions: 'implicit-dirs'
             }
           }
         }],
-        serviceAccountName: process.env.EMUBENCH_SERVICE_ACCOUNT || 'default',
+        serviceAccountName: process.env.EMUBENCH_SERVICE_ACCOUNT || 'emubench-container-manager-sa',
       }
     };
 

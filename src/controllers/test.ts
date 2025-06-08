@@ -28,47 +28,52 @@ export const testOrxMessages = async (req: Request, res: Response) => {
 export const setupTest = async (req: Request, res: Response) => {
   console.log('Setting up test');
 
-  const testConfig: TestConfig = req.body.config;
-  const testId = genId(TEST_ID);
-  const testAuthKey = genId(TEST_AUTH_KEY_ID);
-  const testState: TestState = {
-    setup: false,
-    started: false,
-    finished: false,
-    contextMemWatches: {},
-    endStateMemWatches: {}
-  };
-  const testContainer = await req.containerManagerService.createContainer(testId, testConfig);
+  try {
+    const testConfig: TestConfig = req.body.config;
+    const testId = genId(TEST_ID);
+    const testAuthKey = genId(TEST_AUTH_KEY_ID);
+    const testState: TestState = {
+      setup: false,
+      started: false,
+      finished: false,
+      contextMemWatches: {},
+      endStateMemWatches: {}
+    };
+    const testContainer = await req.containerManagerService.createContainer(testId, testConfig);
 
-  const activeTest = {
-    id: testId,
-    config: testConfig,
-    state: testState,
-    container: testContainer,
-    authKey: testAuthKey
+    const activeTest = {
+      id: testId,
+      config: testConfig,
+      state: testState,
+      container: testContainer,
+      authKey: testAuthKey
+    }
+
+    req.emuSession.activeTests[testId] = activeTest;
+
+    // TODO leverage new method
+    // if (Object.keys(activeTest.config.contextMemWatches).length > 0) {
+    //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.contextMemWatches);
+    //   activeTest.state.contextMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.contextMemWatches));
+    // }
+    // if (Object.keys(activeTest.config.endStateMemWatches).length > 0) {
+    //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.endStateMemWatches);
+    //   activeTest.state.endStateMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.endStateMemWatches));
+    // }
+
+    console.log('State:', activeTest.state);
+
+    activeTest.state.setup = true;
+
+    if (activeTest.config.autoStart) {
+      await req.emulationService.setEmulationState(activeTest, 'play');
+    }
+
+    res.send(200);
+  } catch (error) {
+    console.error('Error setting up test:', error);
+    res.status(500).send('Failed to set up test');
   }
-
-  req.emuSession.activeTests[testId] = activeTest;
-
-  // TODO leverage new method
-  // if (Object.keys(activeTest.config.contextMemWatches).length > 0) {
-  //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.contextMemWatches);
-  //   activeTest.state.contextMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.contextMemWatches));
-  // }
-  // if (Object.keys(activeTest.config.endStateMemWatches).length > 0) {
-  //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.endStateMemWatches);
-  //   activeTest.state.endStateMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.endStateMemWatches));
-  // }
-
-  console.log('State:', activeTest.state);
-
-  activeTest.state.setup = true;
-
-  if (activeTest.config.autoStart) {
-    await req.emulationService.setEmulationState(activeTest, 'play');
-  }
-
-  res.send(200);
 }
 
 export const startTest = async (req: Request, res: Response) => {
