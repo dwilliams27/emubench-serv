@@ -2,29 +2,6 @@ import { TestConfig, TestState } from "@/types/session";
 import { genId, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
-// Async sends test results
-export const testOrxMessages = async (req: Request, res: Response) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive'
-  });
-  
-  // Send periodic keep-alive to prevent connection timeout
-  const keepAliveInterval = setInterval(() => {
-    res.write(': keepalive\n\n');
-  }, 30000);
-
-  req.emuSession.testOrxTransport = { req, res };
-  console.log(`TestOrx session established ${req.emuSession.mcpTransport?.sessionId}`);
-
-  req.on('close', () => {
-    clearInterval(keepAliveInterval);
-    console.log(`TestOrx session closed ${req.emuSession.mcpTransport?.sessionId}`);
-    delete req.emuSession.testOrxTransport;
-  });
-}
-
 export const setupTest = async (req: Request, res: Response) => {
   console.log('Setting up test');
 
@@ -36,8 +13,10 @@ export const setupTest = async (req: Request, res: Response) => {
       setup: false,
       started: false,
       finished: false,
-      contextMemWatches: {},
-      endStateMemWatches: {}
+      images: [],
+      messages: [],
+      contextMemWatchValues: {},
+      endStateMemWatchValues: {}
     };
     const testContainer = await req.containerManagerService.createContainer(testId, testConfig);
 
@@ -68,11 +47,44 @@ export const setupTest = async (req: Request, res: Response) => {
     if (activeTest.config.autoStart) {
       await req.emulationService.setEmulationState(activeTest, 'play');
     }
+    
+    // TODO: Push to DB
 
     res.send(200);
   } catch (error) {
     console.error('Error setting up test:', error);
     res.status(500).send('Failed to set up test');
+  }
+}
+
+export const getTestConfigs = async (req: Request, res: Response) => {
+  // TODO: Fetch from DB
+}
+
+export const getTestState = async (req: Request, res: Response): Promise<{ state?: TestState }> => {
+  if (!req.params.testId) {
+    res.status(400).send('Must specify testId');
+    return {};
+  }
+  const activeTest = req.emuSession.activeTests[req.params.testId];
+  if (!activeTest) {
+    res.status(400).send(`No active test found for id ${req.params.testId}`);
+    return {};
+  }
+  if (activeTest.state.started) {
+    res.status(400).send('Test already started');
+    return {};
+  }
+  const contextMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.config.contextMemWatches))).values;
+  const endStateMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.config.endStateMemWatches))).values;
+
+  activeTest.state.contextMemWatchValues = contextMemWatchValues;
+  activeTest.state.endStateMemWatchValues = endStateMemWatchValues;
+  // TODO: Fetch image from bucket
+  // TODO: Pull in LLM messages
+
+  return {
+    state: activeTest.state
   }
 }
 

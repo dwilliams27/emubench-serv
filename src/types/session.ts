@@ -27,8 +27,10 @@ export interface TestState {
   setup: boolean;
   started: boolean;
   finished: boolean;
-  contextMemWatches: Record<string, string>;
-  endStateMemWatches: Record<string, string>;
+  images: string[];
+  messages: string[];
+  contextMemWatchValues: Record<string, string>;
+  endStateMemWatchValues: Record<string, string>;
 }
 
 export interface ActiveTest {

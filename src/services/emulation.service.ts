@@ -127,7 +127,7 @@ export class EmulationService {
     }
   }
 
-  async readMemWatches(activeTest: ActiveTest, names: string[]) {
+  async readMemWatches(activeTest: ActiveTest, names: string[]): Promise<{ values: Record<string, string> }> {
     try {
       console.log(`Reading memwatches on addresses ${names.join(", ")}`);
       const response = await axios.get(
@@ -136,7 +136,7 @@ export class EmulationService {
       return response.data.values;
     } catch (error: any) {
       console.error('Error reading memwatches:', error?.response?.data);
-      return null;
+      return { values: {} };
     }
   }
 }

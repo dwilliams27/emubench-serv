@@ -41,8 +41,9 @@ app.get('/health', (req, res) => {
 app.get('/mcp', authMiddleware, mcpController.getMcpHandler);
 app.post('/messages', authMiddleware, mcpController.postMessagesHandler);
 
-// test-orx 
-app.get('/test-orx/events', authMiddleware, testController.testOrxMessages);
+// test-orx
+app.get('/test-orx/tests', authMiddleware, testController.getTestConfigs);
+app.get('/test-orx/tests/:testId', authMiddleware, testController.getTestConfigs);
 app.post('/test-orx/setup', authMiddleware, testController.setupTest);
 app.post('/test-orx/start', authMiddleware, testController.startTest);
 
