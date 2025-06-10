@@ -6,7 +6,7 @@ import * as testController from '@/controllers/test';
 import { sessionService } from '@/services/session.service';
 import { mcpService } from '@/services/mcp.service';
 import { configDotenv } from 'dotenv';
-import { containerManagerMiddleware } from '@/middleware/container-manager.middleware';
+import { containerMiddleware } from '@/middleware/container.middleware';
 import { emulationMiddleware } from '@/middleware/emulation.middleware';
 import { mcpMiddleware } from '@/middleware/mcp.middleware';
 import { authMiddleware } from '@/middleware/auth.middleware';
@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 });
 
 app.use(sessionMiddleware);
-app.use(containerManagerMiddleware);
+app.use(containerMiddleware);
 app.use(emulationMiddleware);
 app.use(mcpMiddleware);
 

@@ -1,4 +1,5 @@
 import { MemoryWatch } from "@/types/gamecube";
+import { protos } from "@google-cloud/run";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Request, Response } from "express";
 
@@ -37,7 +38,7 @@ export interface ActiveTest {
   id: string;
   config: TestConfig;
   state: TestState;
-  container: ContainerInstance;
+  container: protos.google.cloud.run.v2.IService;
   // TODO: Maybe rethink this, but my dude is already authed?
   authKey: string;
 }

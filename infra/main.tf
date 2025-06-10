@@ -118,10 +118,17 @@ resource "google_storage_bucket" "emubench_sessions" {
   }
 }
 
-# Grant storage permissions to Cloud Run service account for bucket access
+# TODO: too broad
 resource "google_storage_bucket_iam_member" "emubench_sessions_cloud_run_admin" {
   bucket = google_storage_bucket.emubench_sessions.name
   role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+# Grant storage permissions to Cloud Run service account for spinning up other cloud run containers
+resource "google_project_iam_member" "cloud_run_developer" {
+  project = "emubench-459802"
+  role   = "roles/run.developer"
   member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
@@ -144,7 +151,7 @@ resource "google_cloud_run_service" "emubench_serv" {
         
         env {
           name  = "PROJECT_ID"
-          value = "emubench-459802"
+          value = var.project_id
         }
         
         env {

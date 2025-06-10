@@ -18,7 +18,7 @@ export const setupTest = async (req: Request, res: Response) => {
       contextMemWatchValues: {},
       endStateMemWatchValues: {}
     };
-    const testContainer = await req.containerManagerService.createContainer(testId, testConfig);
+    const testContainer = await req.containerService.deployCloudRunService(testId, testConfig);
 
     const activeTest = {
       id: testId,
