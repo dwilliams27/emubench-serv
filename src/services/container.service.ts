@@ -12,10 +12,27 @@ export class ContainerService {
       serviceId: testId,
       service: {
         template: {
+          serviceAccount: `emubench-cloud-run-sa@${process.env.PROJECT_ID}.iam.gserviceaccount.com`,
+          executionEnvironment: 'EXECUTION_ENVIRONMENT_GEN2',
           containers: [{
-            image: `gcr.io/emubench-459802/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
-            ports: [{ containerPort: 8080 }]
-          }]
+            image: `gcr.io/${process.env.PROJECT_ID}/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
+            ports: [{ containerPort: 58111 }],
+            env: [
+              { name: "SAVE_STATE_FILE", value: testConfig.startStateFilename },
+              { name: "MEMWATCHES", value: testConfig.contextMemWatches ? JSON.stringify({ watches: testConfig.contextMemWatches }) : '{}' },
+              { name: "SESSION_ID", value: testId },
+            ],
+            resources: {
+              limits: {
+                cpu: '2',
+                memory: '4Gi'
+              }
+            }
+          }],
+          scaling: {
+            minInstanceCount: 0,
+            maxInstanceCount: 5
+          }
         }
       }
     };

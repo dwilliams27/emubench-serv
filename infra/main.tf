@@ -15,7 +15,7 @@ terraform {
 }
 
 provider "google" {
-  project = "emubench-459802"
+  project = var.project_id
   region  = var.region
 }
 
@@ -45,7 +45,7 @@ resource "google_service_account" "cloud_run_sa" {
 }
 
 resource "google_project_iam_member" "cloud_run_artifact_registry_reader" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/artifactregistry.reader"
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
@@ -59,42 +59,42 @@ resource "google_service_account" "cloud_build_sa" {
 
 # Grant Cloud Build service account permissions to push to Container Registry
 resource "google_project_iam_member" "cloud_build_storage_admin" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/storage.admin"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
 # Grant Cloud Build service account permissions to write logs
 resource "google_project_iam_member" "cloud_build_logs_writer" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/logging.logWriter"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
 # Grant Cloud Build service account permissions for Cloud Run deployment
 resource "google_project_iam_member" "cloud_build_run_developer" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/run.developer"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
 # Grant Cloud Build service account permissions to use other service accounts
 resource "google_project_iam_member" "cloud_build_service_account_user" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
 # Grant Cloud Build service account permissions for Artifact Registry
 resource "google_project_iam_member" "cloud_build_artifact_registry_writer" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
 # Grant Cloud Build service account additional permissions for Container Registry
 resource "google_project_iam_member" "cloud_build_storage_object_admin" {
-  project = "emubench-459802"
+  project = var.project_id
   role    = "roles/storage.objectAdmin"
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
@@ -127,12 +127,16 @@ resource "google_storage_bucket_iam_member" "emubench_sessions_cloud_run_admin" 
 
 # Grant storage permissions to Cloud Run service account for spinning up other cloud run containers
 resource "google_project_iam_member" "cloud_run_developer" {
-  project = "emubench-459802"
+  project = var.project_id
   role   = "roles/run.developer"
   member = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
-data "google_project" "current" {
+# Grant Cloud Run service account permissions to use other service accounts
+resource "google_project_iam_member" "cloud_run_service_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
 # Cloud Run service
