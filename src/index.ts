@@ -10,6 +10,7 @@ import { containerMiddleware } from '@/middleware/container.middleware';
 import { emulationMiddleware } from '@/middleware/emulation.middleware';
 import { mcpMiddleware } from '@/middleware/mcp.middleware';
 import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
+import { googleAuthMiddleware } from '@/middleware/google-auth.middleware';
 
 configDotenv();
 
@@ -32,6 +33,7 @@ app.use(sessionMiddleware);
 app.use(containerMiddleware);
 app.use(emulationMiddleware);
 app.use(mcpMiddleware);
+app.use(googleAuthMiddleware);
 
 app.get('/health', (req, res) => {
   res.status(200).send({ status: 'ok' });
