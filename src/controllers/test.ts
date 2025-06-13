@@ -53,7 +53,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
     res.send(200);
   } catch (error) {
-    console.error('Error setting up test:', error);
+    console.error('Error setting up test:', JSON.stringify(error));
     res.status(500).send('Failed to set up test');
   }
 }

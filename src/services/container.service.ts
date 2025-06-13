@@ -31,8 +31,8 @@ export class ContainerService {
             }
           }],
           scaling: {
-            minInstanceCount: 0,
-            maxInstanceCount: 5
+            minInstanceCount: 1,
+            maxInstanceCount: 1
           }
         },
         ingress: 'INGRESS_TRAFFIC_INTERNAL_ONLY'
@@ -43,18 +43,28 @@ export class ContainerService {
     const [service] = await operation.promise();
 
     console.log(`Service ${testId} deployed at ${service.uri}`);
-    const healthCheckUrl = `${service.uri}:58111/`;
     try {
-      const response = await axios.get(healthCheckUrl, {
+      const response = await axios.get(`${service.uri}/`, {
         headers: {
           'Authorization': `Bearer ${gAuthToken}`,
           'Content-Type': 'application/json'
         }
       });
-      console.log(`Health check successful for service ${testId}`);
+      console.log(`Health check successful for service ${testId}: ${response.data}`);
     } catch (error) {
-      console.error(`Health check failed for service ${testId}:`, error);
-      throw new Error(`Failed to deploy service ${testId}: ${error}`);
+      console.error(`Health check failed for service ${testId}: ${(error as any).message}`);
+    }
+
+    try {
+      const response = await axios.get(`${service.uri}/api/memwatch/values?names=test_game_id`, {
+        headers: {
+          'Authorization': `Bearer ${gAuthToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log(`Memwatch get successful for service ${testId}: ${response.data}`);
+    } catch (error) {
+      console.error(`Memwatch get failed for service ${testId}: ${(error as any).message}`);
     }
 
     return service;
