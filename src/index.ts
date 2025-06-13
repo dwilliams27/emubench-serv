@@ -9,7 +9,7 @@ import { configDotenv } from 'dotenv';
 import { containerMiddleware } from '@/middleware/container.middleware';
 import { emulationMiddleware } from '@/middleware/emulation.middleware';
 import { mcpMiddleware } from '@/middleware/mcp.middleware';
-import { authMiddleware } from '@/middleware/auth.middleware';
+import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
 
 configDotenv();
 
@@ -38,14 +38,14 @@ app.get('/health', (req, res) => {
 });
 
 // MCP
-app.get('/mcp', authMiddleware, mcpController.getMcpHandler);
-app.post('/messages', authMiddleware, mcpController.postMessagesHandler);
+app.get('/mcp', supabaseAuthMiddleware, mcpController.getMcpHandler);
+app.post('/messages', supabaseAuthMiddleware, mcpController.postMessagesHandler);
 
 // test-orx
-app.get('/test-orx/tests', authMiddleware, testController.getTestConfigs);
-app.get('/test-orx/tests/:testId', authMiddleware, testController.getTestConfigs);
-app.post('/test-orx/setup', authMiddleware, testController.setupTest);
-app.post('/test-orx/start', authMiddleware, testController.startTest);
+app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getTestConfigs);
+app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getTestConfigs);
+app.post('/test-orx/setup', supabaseAuthMiddleware, testController.setupTest);
+app.post('/test-orx/start', supabaseAuthMiddleware, testController.startTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

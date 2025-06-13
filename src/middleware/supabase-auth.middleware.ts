@@ -14,7 +14,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export async function authMiddleware(
+export async function supabaseAuthMiddleware(
   req: AuthenticatedRequest, 
   res: Response, 
   next: NextFunction
