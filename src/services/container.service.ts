@@ -19,6 +19,7 @@ export class ContainerService {
             image: `gcr.io/${process.env.PROJECT_ID}/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
             ports: [{ containerPort: 58111 }],
             env: [
+              { name: "DOLPHIN_EMU_USERPATH", value: `/tmp/gcs/emubench-sessions/${testId}` },
               { name: "SAVE_STATE_FILE", value: testConfig.startStateFilename },
               { name: "MEMWATCHES", value: testConfig.contextMemWatches ? JSON.stringify({ watches: testConfig.contextMemWatches }) : '{}' },
               { name: "SESSION_ID", value: testId },
@@ -28,6 +29,17 @@ export class ContainerService {
                 cpu: '2',
                 memory: '4Gi'
               }
+            },
+            volumeMounts: [{
+              name: `session-mount`,
+              mountPath: `/tmp/gcs/emubench-sessions`,
+            }]
+          }],
+          volumes: [{
+            name: 'session-mount',
+            gcs: {
+              bucket: 'emubench-sessions',
+              readOnly: false
             }
           }],
           scaling: {

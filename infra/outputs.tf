@@ -20,5 +20,5 @@ output "storage_bucket_url" {
 
 output "cloud_run_service_url" {
   description = "URL of the deployed Cloud Run service"
-  value       = google_cloud_run_service.emubench_serv.status[0].url
+  value       = google_cloud_run_v2_service.emubench_serv.uri
 }

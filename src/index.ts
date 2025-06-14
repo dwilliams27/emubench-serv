@@ -11,6 +11,7 @@ import { emulationMiddleware } from '@/middleware/emulation.middleware';
 import { mcpMiddleware } from '@/middleware/mcp.middleware';
 import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
 import { googleAuthMiddleware } from '@/middleware/google-auth.middleware';
+import { readdirSync } from 'fs';
 
 configDotenv();
 
@@ -52,6 +53,16 @@ app.post('/test-orx/start', supabaseAuthMiddleware, testController.startTest);
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {
   console.log(`🪿🛜 emubench-serv listening on port ${PORT}`);
+  // Log contents of /tmp/gcp/emubench-sessions
+  const files = readdirSync('/tmp/gcs/emubench-sessions');
+  if (files.length > 0) {
+    console.log('🪿🛜 Current session files:');
+    files.forEach(file => {
+      console.log(`- ${file}`);
+    });
+  } else {
+    console.log('🪿🛜 No session files found.');
+  }
 });
 
 process.on('SIGINT', async () => {

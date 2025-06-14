@@ -9,7 +9,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 5.0"
+      version = "~> 6.30.0"
     }
   }
 }
@@ -140,94 +140,100 @@ resource "google_project_iam_member" "cloud_run_service_account_user" {
 }
 
 # Cloud Run service
-resource "google_cloud_run_service" "emubench_serv" {
+resource "google_cloud_run_v2_service" "emubench_serv" {
   name     = "emubench-serv"
   location = "us-central1"
 
   template {
-    spec {
-      containers {
-        image = "gcr.io/emubench-459802/emubench-serv"
-        
-        ports {
-          container_port = 8080
-        }
-        
-        env {
-          name  = "PROJECT_ID"
-          value = var.project_id
-        }
-        
-        env {
-          name  = "DB_PASSWORD"
-          value = var.db_password
-        }
-        
-        env {
-          name  = "DB_SERVICE_ROLE_KEY"
-          value = var.db_service_role_key
-        }
-        
-        env {
-          name  = "DB_URL"
-          value = var.db_url
-        }
-        
-        env {
-          name  = "SUPABASE_URL"
-          value = var.supabase_url
-        }
-        
-        env {
-          name  = "SUPABASE_ANON_KEY"
-          value = var.supabase_anon_key
-        }
-        
-        env {
-          name  = "SUPABASE_SERVICE_ROLE_KEY"
-          value = var.supabase_service_role_key
-        }
-        
-        env {
-          name  = "GOOGLE_CLIENT_ID"
-          value = var.google_client_id
-        }
-        
-        env {
-          name  = "MAX_CONCURRENT_CONTAINERS"
-          value = "5"
-        }
-        
-        env {
-          name  = "CONTAINER_TIMEOUT_MINUTES"
-          value = "30"
-        }
-        
-        resources {
-          limits = {
-            cpu    = "1000m"
-            memory = "512Mi"
-          }
-        }
+    containers {
+      image = "gcr.io/emubench-459802/emubench-serv"
+      
+      ports {
+        container_port = 8080
+      }
+
+      volume_mounts {
+        name       = "emubench-sessions"
+        mount_path = "/tmp/gcs/emubench-sessions"
       }
       
-      service_account_name = google_service_account.cloud_run_sa.email
+      env {
+        name  = "PROJECT_ID"
+        value = var.project_id
+      }
       
-      container_concurrency = 10
+      env {
+        name  = "DB_PASSWORD"
+        value = var.db_password
+      }
+      
+      env {
+        name  = "DB_SERVICE_ROLE_KEY"
+        value = var.db_service_role_key
+      }
+      
+      env {
+        name  = "DB_URL"
+        value = var.db_url
+      }
+      
+      env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      
+      env {
+        name  = "SUPABASE_ANON_KEY"
+        value = var.supabase_anon_key
+      }
+      
+      env {
+        name  = "SUPABASE_SERVICE_ROLE_KEY"
+        value = var.supabase_service_role_key
+      }
+      
+      env {
+        name  = "GOOGLE_CLIENT_ID"
+        value = var.google_client_id
+      }
+      
+      env {
+        name  = "MAX_CONCURRENT_CONTAINERS"
+        value = "5"
+      }
+      
+      env {
+        name  = "CONTAINER_TIMEOUT_MINUTES"
+        value = "30"
+      }
+      
+      resources {
+        limits = {
+          cpu    = "1000m"
+          memory = "512Mi"
+        }
+      }
+    }
+    volumes {
+      name = "emubench-sessions"
+      gcs {
+        bucket    = google_storage_bucket.emubench_sessions.name
+        read_only = false
+      }
     }
     
-    metadata {
-      annotations = {
-        "autoscaling.knative.dev/maxScale" = "10"
-      }
-    }
-  }
-
-  traffic {
-    percent         = 100
-    latest_revision = true
+    service_account = google_service_account.cloud_run_sa.email
   }
 
   # Ensure the service account is created first
   depends_on = [google_service_account.cloud_run_sa]
+}
+
+# Allow unauthenticated access to the Cloud Run service
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.emubench_serv.location
+  name     = google_cloud_run_v2_service.emubench_serv.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
