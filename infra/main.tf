@@ -141,8 +141,9 @@ resource "google_project_iam_member" "cloud_run_service_account_user" {
 
 # Cloud Run service
 resource "google_cloud_run_v2_service" "emubench_serv" {
-  name     = "emubench-serv"
-  location = "us-central1"
+  name                 = "emubench-serv"
+  location             = "us-central1"
+  invoker_iam_disabled = true
 
   template {
     containers {
@@ -227,13 +228,5 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
 
   # Ensure the service account is created first
   depends_on = [google_service_account.cloud_run_sa]
-}
-
-# Allow unauthenticated access to the Cloud Run service
-resource "google_cloud_run_v2_service_iam_member" "public_access" {
-  project  = var.project_id
-  location = google_cloud_run_v2_service.emubench_serv.location
-  name     = google_cloud_run_v2_service.emubench_serv.name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+  ingress = "INGRESS_TRAFFIC_ALL"
 }
