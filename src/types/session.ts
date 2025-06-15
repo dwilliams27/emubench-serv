@@ -1,12 +1,7 @@
 import { MemoryWatch } from "@/types/gamecube";
 import { protos } from "@google-cloud/run";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Request, Response } from "express";
-
-export interface TestOrxTransport {
-  req: Request;
-  res: Response;
-}
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 export interface ContainerInstance {
   id: string;
@@ -36,15 +31,14 @@ export interface TestState {
 
 export interface ActiveTest {
   id: string;
+  mcpSessionId: string;
   config: TestConfig;
   state: TestState;
   container: protos.google.cloud.run.v2.IService;
-  // TODO: Maybe rethink this, but my dude is already authed?
-  authKey: string;
+  googleToken: string;
 }
 
 export interface EmuSession {
   activeTests: Record<string, ActiveTest>;
-  testOrxTransport?: TestOrxTransport;
-  mcpTransport?: SSEServerTransport;
+  mcpSessions: Record<string, StreamableHTTPServerTransport>;
 }

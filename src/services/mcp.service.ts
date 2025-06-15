@@ -1,16 +1,14 @@
 import { emulationService } from "@/services/emulation.service";
 import { sessionService } from "@/services/session.service";
+import { ActiveTest } from "@/types/session";
 import { directionToStickPosition, durationToFrames } from "@/utils/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-/**
- * TODO: SSE -> Streamable HTTP?
- */
 export class McpService {
-  server: McpServer;
+  private server: McpServer;
 
   constructor() {
     this.server = new McpServer({
@@ -21,18 +19,20 @@ export class McpService {
     this.setupBasicTools();
   }
 
-  getActiveTest(context: RequestHandlerExtra<any, any>) {
+  getServer() {
+    return this.server;
+  }
+
+  getActiveTest(context: RequestHandlerExtra<any, any>): ActiveTest {
     if (!context.sessionId) {
       throw new Error('No session ID provided in request context');
     }
-    const session = sessionService.sessions[context.sessionId];
-    const activeTest = Object.keys(session.activeTests).find(test => session.activeTests[test].authKey === context.authInfo?.token);
-
-    if (!activeTest) {
-      throw new Error(`No active test found for session ID: ${context.sessionId}`);
+    const session = sessionService.getMcpSession(context.sessionId);
+    if (!session) {
+      throw new Error('No session found for ID: ' + context.sessionId);
     }
 
-    return session.activeTests[activeTest];
+    return session[0];
   }
 
   setupBasicTools() {

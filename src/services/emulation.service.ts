@@ -11,7 +11,16 @@ export class EmulationService {
     request.connected = true;
     try {
       console.log(`Sending controller input to port ${controllerPort}:`, request);
-      await axios.post(`http://${activeTest.container.urls?.[0]}:58111/api/controller/${controllerPort}`, request)
+      await axios.post(
+        `${activeTest.container.uri}/api/controller/${controllerPort}`,
+        request,
+        { 
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          } 
+        }
+      );
     } catch (error) {
       console.error('Error sending controller input:', error);
       return false;
@@ -23,8 +32,14 @@ export class EmulationService {
     try {
       console.log("Grabbing screenshot");
       const response = await axios.get(
-        `http://${activeTest.container.urls?.[0]}:58111/api/screenshot`,
-        { responseType: 'arraybuffer'}
+        `${activeTest.container.uri}/api/screenshot`,
+        {
+          responseType: 'arraybuffer',
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
   
       const base64Image = Buffer.from(response.data, 'binary').toString('base64');
@@ -38,7 +53,16 @@ export class EmulationService {
   async saveStateSlot(activeTest: ActiveTest, slot: number) {
     try {
       console.log(`Saving state to slot ${slot}`);
-      const response = await axios.post(`http://${activeTest.container.urls?.[0]}:58111/api/emulation/state`, { action: 'save', to: slot });
+      const response = await axios.post(
+        `${activeTest.container.uri}/api/emulation/state`,
+        { action: 'save', to: slot },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     } catch (error) {
       console.error('Error saving state to slot:', error);
       return null;
@@ -48,7 +72,16 @@ export class EmulationService {
   async loadStateSlot(activeTest: ActiveTest, slot: number) {
     try {
       console.log(`Loading state from slot ${slot}`);
-      const response = await axios.post(`http://${activeTest.container.urls?.[0]}:58111/api/emulation/state`, { action: 'load', to: slot });
+      const response = await axios.post(
+        `${activeTest.container.uri}/api/emulation/state`,
+        { action: 'load', to: slot },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     } catch (error) {
       console.error('Error loading state from slot:', error);
       return null;
@@ -58,7 +91,16 @@ export class EmulationService {
   async saveStateFile(activeTest: ActiveTest, file: string) {
     try {
       console.log(`Saving state to file ${file}`);
-      const response = await axios.post(`http://${activeTest.container.urls?.[0]}:58111/api/emulation/state`, { action: 'save', to: file });
+      const response = await axios.post(
+        `${activeTest.container.uri}/api/emulation/state`,
+        { action: 'save', to: file },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     } catch (error) {
       console.error('Error saving state to file:', error);
       return null;
@@ -68,7 +110,16 @@ export class EmulationService {
   async loadStateFile(activeTest: ActiveTest, file: string) {
     try {
       console.log(`Loading state from file ${file}`);
-      const response = await axios.post(`http://${activeTest.container.urls?.[0]}:58111/api/emulation/state`, { action: 'load', to: file });
+      const response = await axios.post(
+        `${activeTest.container.uri}/api/emulation/state`,
+        { action: 'load', to: file },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
     } catch (error) {
       console.error('Error loading state from file:', error);
       return null;
@@ -79,8 +130,14 @@ export class EmulationService {
     try {
       console.log(`Setting emulation speed to ${speed}`);
       const response = await axios.post(
-        `http://${activeTest.container.urls?.[0]}:58111/api/emulation/config`,
-        { speed }
+        `${activeTest.container.uri}/api/emulation/config`,
+        { speed },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
     } catch (error) {
       console.error('Error setting emulation speed:', error);
@@ -92,8 +149,14 @@ export class EmulationService {
     try {
       console.log(`Setting emulation state to ${action}`);
       const response = await axios.post(
-        `http://${activeTest.container.urls?.[0]}:58111/api/emulation/state`,
-        { action }
+        `${activeTest.container.uri}/api/emulation/state`,
+        { action },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
     } catch (error) {
       console.error('Error setting emulation state:', error);
@@ -105,8 +168,14 @@ export class EmulationService {
     try {
       console.log(`Booting game from ${game_path}`);
       const response = await axios.post(
-        `http://${activeTest.container.urls?.[0]}:58111/api/emulation/boot`,
-        { game_path }
+        `${activeTest.container.uri}/api/emulation/boot`,
+        { game_path },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
     } catch (error) {
       console.error('Error booting game:', error);
@@ -118,8 +187,14 @@ export class EmulationService {
     try {
       console.log(`Setting up memwatches for addresses ${Object.values(watches).map((watch) => watch.address).join(", ")}`);
       const response = await axios.post(
-        `http://${activeTest.container.urls?.[0]}:58111/api/memwatch/setup`,
-        { watches }
+        `${activeTest.container.uri}/api/memwatch/setup`,
+        { watches },
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
     } catch (error: any) {
       console.error('Error setting memwatches:', error?.response?.data);
@@ -131,7 +206,13 @@ export class EmulationService {
     try {
       console.log(`Reading memwatches on addresses ${names.join(", ")}`);
       const response = await axios.get(
-        `http://${activeTest.container.urls?.[0]}:58111/api/memwatch/values?names=${names.join(",")}`,
+        `${activeTest.container.uri}/api/memwatch/values?names=${names.join(",")}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
       return response.data.values;
     } catch (error: any) {

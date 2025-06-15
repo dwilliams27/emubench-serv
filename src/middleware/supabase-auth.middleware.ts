@@ -1,21 +1,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { sessionService } from '@/services/session.service';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
   process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 );
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email?: string;
-    provider: 'google' | 'supabase';
-  };
-}
-
 export async function supabaseAuthMiddleware(
-  req: AuthenticatedRequest, 
+  req: Request, 
   res: Response, 
   next: NextFunction
 ): Promise<void> {
@@ -42,6 +35,19 @@ export async function supabaseAuthMiddleware(
           email: user.email,
           provider: 'supabase'
         };
+
+        if (!sessionService.isValidSession(user.id)) {
+          console.log(`[AUTH] Creating new session for user: ${user.email} under ID: ${user.id}`);
+          sessionService.createSession(user.id);
+        }
+
+        req.emuSession = sessionService.getSession(user.id)!;
+
+        const mcpSessionId = req.headers['mcp-session-id'] as string | undefined;
+        if (mcpSessionId) {
+          req.mcpSession = sessionService.getMcpSession(mcpSessionId);
+        }
+
         console.log(`[AUTH] Supabase user authenticated: ${user.email}`);
         next();
         return;
@@ -56,5 +62,3 @@ export async function supabaseAuthMiddleware(
     res.status(500).json({ error: 'Internal authentication error' });
   }
 }
-
-export type { AuthenticatedRequest };

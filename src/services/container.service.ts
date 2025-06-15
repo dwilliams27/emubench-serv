@@ -1,11 +1,10 @@
+import { gcpService } from '@/services/gcp.service';
 import { TestConfig } from '@/types/session';
 import { protos, ServicesClient } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";
 
 export class ContainerService {
-  client = new ServicesClient();
-
   async deployCloudRunService(testId: string, testConfig: TestConfig) {
     const location = 'us-central1';
     
@@ -52,8 +51,7 @@ export class ContainerService {
       }
     };
 
-    const [operation] = await this.client.createService(request);
-    const [service] = await operation.promise();
+    const service = await gcpService.createService(request);
 
     await this.grantInvokePermission(testId, location);
     const identityToken = await this.getIdentityToken(service.uri!);
@@ -83,14 +81,12 @@ export class ContainerService {
       console.error(`Memwatch get failed for service ${testId}: ${(error as any).message}`);
     }
 
-    return service;
+    return { identityToken, service };
   }
 
   private async grantInvokePermission(serviceId: string, location: string) {
     try {
-      const policy = await this.client.getIamPolicy({
-        resource: `projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`
-      });
+      const policy = await gcpService.getIamPolicy(`projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`);
 
       const binding = {
         role: 'roles/run.invoker',
@@ -102,7 +98,7 @@ export class ContainerService {
       }
       policy[0].bindings.push(binding);
 
-      await this.client.setIamPolicy({
+      await gcpService.setIamPolicy({
         resource: `projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`,
         policy: policy[0]
       });

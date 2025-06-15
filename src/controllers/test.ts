@@ -1,5 +1,5 @@
-import { TestConfig, TestState } from "@/types/session";
-import { genId, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
+import { ActiveTest, TestConfig, TestState } from "@/types/session";
+import { genId, MCP_SESSION_ID, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
 export const setupTest = async (req: Request, res: Response) => {
@@ -18,14 +18,15 @@ export const setupTest = async (req: Request, res: Response) => {
       contextMemWatchValues: {},
       endStateMemWatchValues: {}
     };
-    const testContainer = await req.containerService.deployCloudRunService(testId, testConfig);
+    const { identityToken, service } = await req.containerService.deployCloudRunService(testId, testConfig);
 
-    const activeTest = {
+    const activeTest: ActiveTest = {
       id: testId,
+      mcpSessionId: genId(MCP_SESSION_ID),
       config: testConfig,
       state: testState,
-      container: testContainer,
-      authKey: testAuthKey
+      container: service,
+      googleToken: identityToken
     }
 
     req.emuSession.activeTests[testId] = activeTest;

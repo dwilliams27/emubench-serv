@@ -1,25 +1,47 @@
-import { EmuSession } from "@/types/session";
+import { ActiveTest, EmuSession } from "@/types/session";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 export class SessionService {
-  sessions: Record<string, EmuSession> = {};
+  private sessions: Record<string, EmuSession> = {};
+  private mcpSessions: Record<string, [ActiveTest, StreamableHTTPServerTransport]> = {};
 
   createSession(sessionId: string) {
     this.sessions[sessionId] = {
-      activeTests: {}
+      activeTests: {},
+      mcpSessions: {}
     };
   }
 
-  async destroy() {
-    for (const sessionId in this.sessions) {
-      // Close MCP transports
-      try {
-        console.log(`Closing transport for session ${sessionId}`);
-        await this.sessions[sessionId].mcpTransport?.close();
-        delete this.sessions[sessionId];
-      } catch (error) {
-        console.error(`Error closing transport for session ${sessionId}:`, error);
-      }
+  getSession(sessionId: string): EmuSession | undefined {
+    return this.sessions[sessionId];
+  }
+
+  isValidSession(sessionId: string): boolean {
+    return !!this.sessions[sessionId];
+  }
+
+  addMcpSession(session: EmuSession | undefined, mcpSessionId: string, transport: StreamableHTTPServerTransport) {
+    if (!session) {
+      console.error(`No session found for MCP session ID: ${mcpSessionId}`);
+      return;
     }
+
+    const testId = Object.keys(session.activeTests).find((key) => session.activeTests[key].mcpSessionId === mcpSessionId);
+    if (!testId) {
+      console.error(`No active test found for MCP session ID: ${mcpSessionId}`);
+      return;
+    }
+
+    session.mcpSessions[mcpSessionId] = transport;
+    this.mcpSessions[mcpSessionId] = [session.activeTests[testId], transport];
+  }
+
+  destroyMcpSession(mcpSessionId: string) {
+    delete this.mcpSessions[mcpSessionId];
+  }
+
+  getMcpSession(mcpSessionId: string): [ActiveTest, StreamableHTTPServerTransport] | undefined {
+    return this.mcpSessions[mcpSessionId];
   }
 }
 
