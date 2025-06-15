@@ -1,11 +1,12 @@
 import { TestConfig } from '@/types/session';
 import { protos, ServicesClient } from '@google-cloud/run';
 import axios from 'axios';
+import { GoogleAuth } from "google-auth-library";
 
 export class ContainerService {
   client = new ServicesClient();
 
-  async deployCloudRunService(testId: string, testConfig: TestConfig, gAuthToken: string) {
+  async deployCloudRunService(testId: string, testConfig: TestConfig) {
     const location = 'us-central1';
     
     const request: protos.google.cloud.run.v2.ICreateServiceRequest = {
@@ -17,7 +18,7 @@ export class ContainerService {
           executionEnvironment: 'EXECUTION_ENVIRONMENT_GEN2',
           containers: [{
             image: `gcr.io/${process.env.PROJECT_ID}/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
-            ports: [{ containerPort: 58111 }],
+            ports: [{ containerPort: 8080 }],
             env: [
               { name: "DOLPHIN_EMU_USERPATH", value: `/tmp/gcs/emubench-sessions/${testId}` },
               { name: "SAVE_STATE_FILE", value: testConfig.startStateFilename },
@@ -47,18 +48,21 @@ export class ContainerService {
             maxInstanceCount: 1
           }
         },
-        ingress: 'INGRESS_TRAFFIC_INTERNAL_ONLY'
+        ingress: 'INGRESS_TRAFFIC_ALL',
       }
     };
 
     const [operation] = await this.client.createService(request);
     const [service] = await operation.promise();
 
+    await this.grantInvokePermission(testId, location);
+    const identityToken = await this.getIdentityToken(service.uri!);
+
     console.log(`Service ${testId} deployed at ${service.uri}`);
     try {
       const response = await axios.get(`${service.uri}/`, {
         headers: {
-          'Authorization': `Bearer ${gAuthToken}`,
+          'Authorization': `Bearer ${identityToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -70,7 +74,7 @@ export class ContainerService {
     try {
       const response = await axios.get(`${service.uri}/api/memwatch/values?names=test_game_id`, {
         headers: {
-          'Authorization': `Bearer ${gAuthToken}`,
+          'Authorization': `Bearer ${identityToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -80,6 +84,42 @@ export class ContainerService {
     }
 
     return service;
+  }
+
+  private async grantInvokePermission(serviceId: string, location: string) {
+    try {
+      const policy = await this.client.getIamPolicy({
+        resource: `projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`
+      });
+
+      const binding = {
+        role: 'roles/run.invoker',
+        members: [`serviceAccount:emubench-cloud-run-sa@${process.env.PROJECT_ID}.iam.gserviceaccount.com`]
+      };
+
+      if (!policy[0].bindings) {
+        policy[0].bindings = [];
+      }
+      policy[0].bindings.push(binding);
+
+      await this.client.setIamPolicy({
+        resource: `projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`,
+        policy: policy[0]
+      });
+
+      console.log(`Granted invoke permission for service ${serviceId}`);
+    } catch (error) {
+      console.error(`Failed to grant invoke permission for service ${serviceId}:`, error);
+    }
+  }
+
+  private async getIdentityToken(targetUrl: string): Promise<string> {
+    const auth = new GoogleAuth();
+    
+    const client = await auth.getIdTokenClient(targetUrl);
+    const idToken = await client.idTokenProvider.fetchIdToken(targetUrl);
+    
+    return idToken;
   }
 }
 

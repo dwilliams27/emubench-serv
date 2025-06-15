@@ -139,6 +139,13 @@ resource "google_project_iam_member" "cloud_run_service_account_user" {
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
+# Grant Cloud Run service account permissions to invoke other Cloud Run services
+resource "google_project_iam_member" "cloud_run_invoker" {
+  project = var.project_id
+  role    = "roles/run.invoker"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
 # Cloud Run service
 resource "google_cloud_run_v2_service" "emubench_serv" {
   name                 = "emubench-serv"

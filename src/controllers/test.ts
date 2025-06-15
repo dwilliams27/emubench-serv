@@ -18,8 +18,7 @@ export const setupTest = async (req: Request, res: Response) => {
       contextMemWatchValues: {},
       endStateMemWatchValues: {}
     };
-    const authToken = await req.googleAuthService.getAccessToken();
-    const testContainer = await req.containerService.deployCloudRunService(testId, testConfig, authToken);
+    const testContainer = await req.containerService.deployCloudRunService(testId, testConfig);
 
     const activeTest = {
       id: testId,
