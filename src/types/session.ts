@@ -11,7 +11,6 @@ export interface ContainerInstance {
 }
 
 export interface TestConfig {
-  autoStart: boolean;
   gameId: string;
   platform: 'gamecube';
   startStateFilename: string;

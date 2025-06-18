@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
 export const TEST_ID = 'tst';
-export const TEST_AUTH_KEY_ID = 'tauth';
 export const MCP_SESSION_ID = 'mcp';
 
 export function genId(prefix: string): string {

@@ -1,5 +1,5 @@
 import { ActiveTest, TestConfig, TestState } from "@/types/session";
-import { genId, MCP_SESSION_ID, TEST_AUTH_KEY_ID, TEST_ID } from "@/utils/id";
+import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
 export const setupTest = async (req: Request, res: Response) => {
@@ -8,7 +8,6 @@ export const setupTest = async (req: Request, res: Response) => {
   try {
     const testConfig: TestConfig = req.body.config;
     const testId = genId(TEST_ID);
-    const testAuthKey = genId(TEST_AUTH_KEY_ID);
     const testState: TestState = {
       setup: false,
       started: false,
@@ -31,27 +30,13 @@ export const setupTest = async (req: Request, res: Response) => {
 
     req.emuSession.activeTests[testId] = activeTest;
 
-    // TODO leverage new method
-    // if (Object.keys(activeTest.config.contextMemWatches).length > 0) {
-    //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.contextMemWatches);
-    //   activeTest.state.contextMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.contextMemWatches));
-    // }
-    // if (Object.keys(activeTest.config.endStateMemWatches).length > 0) {
-    //   await req.emulationService.setupMemWatches(activeTest, activeTest.config.endStateMemWatches);
-    //   activeTest.state.endStateMemWatches = await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.state.endStateMemWatches));
-    // }
-
     console.log('State:', activeTest.state);
 
     activeTest.state.setup = true;
-
-    if (activeTest.config.autoStart) {
-      await req.emulationService.setEmulationState(activeTest, 'play');
-    }
     
     // TODO: Push to DB
 
-    res.send(200);
+    res.send({ testId, mcpSessionId: activeTest.mcpSessionId });
   } catch (error) {
     console.error('Error setting up test:', JSON.stringify(error));
     res.status(500).send('Failed to set up test');
