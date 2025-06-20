@@ -1,3 +1,4 @@
+import { emulationService } from "@/services/emulation.service";
 import { ActiveTest, EmuSession } from "@/types/session";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
@@ -20,20 +21,23 @@ export class SessionService {
     return !!this.sessions[sessionId];
   }
 
-  addMcpSession(session: EmuSession | undefined, mcpSessionId: string, transport: StreamableHTTPServerTransport) {
+  getTestIdFromSessionId(session: EmuSession | undefined, sessionId: string): string | null {
+    if (!session) return null;
+
+    return Object.keys(session.activeTests).find((key) => session.activeTests[key].mcpSessionId === sessionId) || null;
+  }
+
+  async addMcpSession(session: EmuSession | undefined, mcpSessionId: string, testId: string, transport: StreamableHTTPServerTransport) {
     if (!session) {
       console.error(`No session found for MCP session ID: ${mcpSessionId}`);
       return;
     }
 
-    const testId = Object.keys(session.activeTests).find((key) => session.activeTests[key].mcpSessionId === mcpSessionId);
-    if (!testId) {
-      console.error(`No active test found for MCP session ID: ${mcpSessionId}`);
-      return;
-    }
-
     session.mcpSessions[mcpSessionId] = transport;
     this.mcpSessions[mcpSessionId] = [session.activeTests[testId], transport];
+
+    const activeTest = session.activeTests[testId];
+    await emulationService.setEmulationState(activeTest, 'play');
   }
 
   destroyMcpSession(mcpSessionId: string) {

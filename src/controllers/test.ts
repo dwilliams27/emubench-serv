@@ -1,4 +1,4 @@
-import { ActiveTest, TestConfig, TestState } from "@/types/session";
+import { ActiveTest, EmuTestConfig, EmuTestState } from "@/types/session";
 import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
@@ -6,14 +6,10 @@ export const setupTest = async (req: Request, res: Response) => {
   console.log('Setting up test');
 
   try {
-    const testConfig: TestConfig = req.body.config;
     const testId = genId(TEST_ID);
-    const testState: TestState = {
-      setup: false,
-      started: false,
-      finished: false,
-      images: [],
-      messages: [],
+    const testConfig: EmuTestConfig = { ...req.body.config, id: testId };
+    const testState: EmuTestState = {
+      state: 'booting',
       contextMemWatchValues: {},
       endStateMemWatchValues: {}
     };
@@ -22,17 +18,18 @@ export const setupTest = async (req: Request, res: Response) => {
     const activeTest: ActiveTest = {
       id: testId,
       mcpSessionId: genId(MCP_SESSION_ID),
-      config: testConfig,
-      state: testState,
+      emuConfig: testConfig,
+      emuState: testState,
       container: service,
       googleToken: identityToken
     }
 
     req.emuSession.activeTests[testId] = activeTest;
 
-    console.log('State:', activeTest.state);
+    console.log('State:', activeTest.emuState);
 
-    activeTest.state.setup = true;
+    // TODO: Sync from FUSE
+    activeTest.emuState.state = 'ready';
     
     // TODO: Push to DB
 
@@ -43,11 +40,11 @@ export const setupTest = async (req: Request, res: Response) => {
   }
 }
 
-export const getTestConfigs = async (req: Request, res: Response) => {
+export const getEmuTestConfigs = async (req: Request, res: Response) => {
   // TODO: Fetch from DB
 }
 
-export const getTestState = async (req: Request, res: Response): Promise<{ state?: TestState }> => {
+export const getEmuTestState = async (req: Request, res: Response): Promise<{ state?: EmuTestState }> => {
   if (!req.params.testId) {
     res.status(400).send('Must specify testId');
     return {};
@@ -57,42 +54,15 @@ export const getTestState = async (req: Request, res: Response): Promise<{ state
     res.status(400).send(`No active test found for id ${req.params.testId}`);
     return {};
   }
-  if (activeTest.state.started) {
-    res.status(400).send('Test already started');
-    return {};
-  }
-  const contextMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.config.contextMemWatches))).values;
-  const endStateMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.config.endStateMemWatches))).values;
+  const contextMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.contextMemWatches))).values;
+  const endStateMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.endStateMemWatches))).values;
 
-  activeTest.state.contextMemWatchValues = contextMemWatchValues;
-  activeTest.state.endStateMemWatchValues = endStateMemWatchValues;
+  activeTest.emuState.contextMemWatchValues = contextMemWatchValues;
+  activeTest.emuState.endStateMemWatchValues = endStateMemWatchValues;
   // TODO: Fetch image from bucket
   // TODO: Pull in LLM messages
 
   return {
-    state: activeTest.state
+    state: activeTest.emuState
   }
 }
-
-export const startTest = async (req: Request, res: Response) => {
-  if (!req.body.testId) {
-    res.status(400).send('Must specify testId');
-    return;
-  }
-  const activeTest = req.emuSession.activeTests[req.body.testId];
-  if (!activeTest) {
-    res.status(400).send(`No active test found for id ${req.body.testId}`);
-    return;
-  }
-  if (activeTest.state.started) {
-    res.status(400).send('Test already started');
-    return;
-  }
-
-  console.log('Starting test');
-  await req.emulationService.setEmulationState(activeTest, 'play');
-
-  activeTest.state.started = true;
-
-  res.send(200);
-};

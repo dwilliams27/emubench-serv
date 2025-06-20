@@ -36,10 +36,9 @@ app.post('/mcp', supabaseAuthMiddleware, mcpController.postMcpHandler);
 app.delete('/mcp', supabaseAuthMiddleware, mcpController.deleteMcpHandler);
 
 // test-orx
-app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getTestConfigs);
-app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getTestConfigs);
+app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getEmuTestConfigs);
+app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getEmuTestConfigs);
 app.post('/test-orx/setup', supabaseAuthMiddleware, testController.setupTest);
-app.post('/test-orx/start', supabaseAuthMiddleware, testController.startTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

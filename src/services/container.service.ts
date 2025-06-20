@@ -1,11 +1,11 @@
 import { gcpService } from '@/services/gcp.service';
-import { TestConfig } from '@/types/session';
+import { EmuTestConfig } from '@/types/session';
 import { protos, ServicesClient } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";
 
 export class ContainerService {
-  async deployCloudRunService(testId: string, testConfig: TestConfig) {
+  async deployCloudRunService(testId: string, testConfig: EmuTestConfig) {
     const location = 'us-central1';
     
     const request: protos.google.cloud.run.v2.ICreateServiceRequest = {

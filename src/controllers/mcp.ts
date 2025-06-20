@@ -1,9 +1,4 @@
 import { Request, Response } from 'express';
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { InMemoryEventStore } from "@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js";
-import { sessionService } from '@/services/session.service';
-import { randomUUID } from 'node:crypto';
 
 export const postMcpHandler = async (req: Request, res: Response) => {
   console.log(`Request received: ${req.method} ${req.url}`, {body: req.body});
@@ -18,38 +13,9 @@ export const postMcpHandler = async (req: Request, res: Response) => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
     if (req.mcpSession?.[1]) {
-      console.log(`Reusing MCP transport for session: ${req.mcpSession[0]}`);
-    } else if (!sessionId && isInitializeRequest(req.body)) {
-      console.log(`New session request: ${req.body.method}`);
-
-      const eventStore = new InMemoryEventStore();
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        enableJsonResponse: true,
-        eventStore,
-        onsessioninitialized: (sessionId) => {
-          console.log(`Session initialized: ${sessionId}`);
-          sessionService.addMcpSession(req.emuSession, sessionId, transport);
-        }
-      });
-
-      transport.onclose = () => {
-        const sid = transport.sessionId;
-        if (sid) {
-        sessionService.destroyMcpSession(sid);
-        }
-      };
-
-      console.log(`Connecting transport to MCP server...`);
-      await req.mcpService.getServer().connect(transport);
-      console.log(`Transport connected to MCP server successfully`);
-      
-      console.log(`Handling initialization request...`);
-      await transport.handleRequest(req, res, req.body);
-      console.log(`Initialization request handled, response sent`);
-      return;
+      console.log(`Reusing MCP transport for session: ${sessionId}`);
     } else {
-      console.error('Invalid request: No valid session ID or initialization request');
+      console.error('Invalid request: No valid session ID');
       // Invalid request
       res.status(400).json({
         jsonrpc: '2.0',
@@ -62,14 +28,14 @@ export const postMcpHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`Handling request for session: ${req.mcpSession[0]}`);
+    console.log(`Handling request for session: ${sessionId}`);
     console.log(`Request body:`, JSON.stringify(req.body, null, 2));
     
     console.log(`Calling transport.handleRequest...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res, req.body);
     const duration = Date.now() - startTime;
-    console.log(`Request handling completed in ${duration}ms for session: ${req.mcpSession[0]}`);
+    console.log(`Request handling completed in ${duration}ms for session: ${sessionId}`);
   } catch (error) {
     console.error('Error handling MCP request:', error);
     if (!res.headersSent) {

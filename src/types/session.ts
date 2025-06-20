@@ -1,6 +1,5 @@
 import { MemoryWatch } from "@/types/gamecube";
 import { protos } from "@google-cloud/run";
-import { Request, Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 export interface ContainerInstance {
@@ -10,7 +9,8 @@ export interface ContainerInstance {
   createdAt: Date;
 }
 
-export interface TestConfig {
+export interface EmuTestConfig {
+  id: string;
   gameId: string;
   platform: 'gamecube';
   startStateFilename: string;
@@ -18,12 +18,9 @@ export interface TestConfig {
   endStateMemWatches: Record<string, MemoryWatch>;
 };
 
-export interface TestState {
-  setup: boolean;
-  started: boolean;
-  finished: boolean;
-  images: string[];
-  messages: string[];
+// Read in from file
+export interface EmuTestState {
+  state: 'booting' | 'ready' | 'running' | 'finished';
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
 }
@@ -31,8 +28,8 @@ export interface TestState {
 export interface ActiveTest {
   id: string;
   mcpSessionId: string;
-  config: TestConfig;
-  state: TestState;
+  emuConfig: EmuTestConfig;
+  emuState: EmuTestState;
   container: protos.google.cloud.run.v2.IService;
   googleToken: string;
 }
