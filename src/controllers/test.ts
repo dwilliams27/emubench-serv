@@ -21,8 +21,8 @@ export const setupTest = async (req: Request, res: Response) => {
 
     // Deploy game and agent
     const gamePromise = req.containerService.deployGame(testId, testConfig);
-    const agentPromise = req.containerService.deployAgent(testId, mcpSessionId, req.headers['Authorization'] as string);
-    const [gameContainer, agentContainer] = await Promise.all([gamePromise, agentPromise]);
+    const agentPromise = req.containerService.runAgent(testId, mcpSessionId, req.headers['Authorization'] as string);
+    const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
     const { identityToken, service } = gameContainer;
 
     const activeTest: ActiveTest = {

@@ -19,10 +19,29 @@ export class GcpService {
     return service;
   }
 
-  async createJob(request: protos.google.cloud.run.v2.ICreateJobRequest): Promise<protos.google.cloud.run.v2.IJob> {
-    const [operation] = await this.jobClient.createJob(request);
-    const [job] = await operation.promise();
-    return job;
+  async runJob(testPath: string, authToken: string, mcpSessionId: string): Promise<boolean> {
+    await this.jobClient.runJob({
+      name: `projects/${process.env.PROJECT_ID}/locations/us-central1/jobs/agent-job`,
+      overrides: {
+        containerOverrides: [{
+          env: [
+            {
+              name: 'TEST_PATH',
+              value: testPath
+            },
+            {
+              name: 'AUTH_TOKEN',
+              value: authToken
+            },
+            {
+              name: 'MCP_SESSION_ID',
+              value: mcpSessionId
+            }
+          ]
+        }]
+      }
+    });
+    return true;
   }
 
   async getIamPolicy(resource: string): Promise<[protos.google.iam.v1.IPolicy, protos.google.iam.v1.IGetIamPolicyRequest | undefined, {} | undefined]> {

@@ -85,48 +85,8 @@ export class ContainerService {
     return { identityToken, service };
   }
 
-  async deployAgent(testId: string, mcpSessionId: string, authToken: string) {
-    const location = 'us-central1';
-    
-    const request: protos.google.cloud.run.v2.ICreateJobRequest = {
-      parent: `projects/${process.env.PROJECT_ID}/locations/${location}`,
-      jobId: `${testId}-agent-job`,
-      job: {
-        template: {
-          template: {
-            serviceAccount: `emubench-cloud-run-sa@${process.env.PROJECT_ID}.iam.gserviceaccount.com`,
-            executionEnvironment: 'EXECUTION_ENVIRONMENT_GEN2',
-            containers: [{
-              image: `gcr.io/${process.env.PROJECT_ID}/emubench-agent:latest`,
-              env: [
-                { name: "TEST_PATH", value: `${SESSION_FUSE_PATH}/${testId}` },
-                { name: "AUTH_TOKEN", value: authToken },
-                { name: "MCP_SESSION_ID", value: mcpSessionId },
-              ],
-              resources: {
-                limits: {
-                  cpu: '2',
-                  memory: '4Gi'
-                }
-              },
-              volumeMounts: [{
-                name: `session-mount`,
-                mountPath: SESSION_FUSE_PATH,
-              }]
-            }],
-            volumes: [{
-              name: 'session-mount',
-              gcs: {
-                bucket: 'emubench-sessions',
-                readOnly: false
-              }
-            }],
-          }
-        }
-      }
-    };
-
-    const job = await gcpService.createJob(request);
+  async runAgent(testId: string, mcpSessionId: string, authToken: string) {
+    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, authToken, mcpSessionId);
   }
 
   private async grantInvokePermission(serviceId: string, location: string) {

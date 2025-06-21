@@ -242,3 +242,57 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
   depends_on = [google_service_account.cloud_run_sa]
   ingress = "INGRESS_TRAFFIC_ALL"
 }
+
+# Agent job
+resource "google_cloud_run_v2_job" "emubench_agent_job" {
+  name     = "emubench-agent-job"
+  location = "us-central1"
+
+  template {
+    template {
+      service_account        = google_service_account.cloud_run_sa.email
+      execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+      
+      containers {
+        image = "gcr.io/${var.project_id}/emubench-agent:latest"
+        
+        env {
+          name  = "TEST_PATH"
+          value = "/tmp/placeholder"
+        }
+        
+        env {
+          name  = "AUTH_TOKEN"
+          value = "placeholder-auth-token"
+        }
+        
+        env {
+          name  = "MCP_SESSION_ID"
+          value = "placeholder-session-id"
+        }
+        
+        resources {
+          limits = {
+            cpu    = "2"
+            memory = "4Gi"
+          }
+        }
+        
+        volume_mounts {
+          name       = "session-mount"
+          mount_path = "/tmp/gcs/session"
+        }
+      }
+      
+      volumes {
+        name = "session-mount"
+        gcs {
+          bucket    = google_storage_bucket.emubench_sessions.name
+          read_only = false
+        }
+      }
+    }
+  }
+
+  depends_on = [google_service_account.cloud_run_sa]
+}
