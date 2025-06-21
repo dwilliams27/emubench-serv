@@ -21,6 +21,9 @@ export interface EmuTestConfig {
 // Read in from file
 export interface EmuTestState {
   state: 'booting' | 'ready' | 'running' | 'finished';
+}
+
+export interface EmuTestMemoryState {
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
 }
@@ -29,7 +32,8 @@ export interface ActiveTest {
   id: string;
   mcpSessionId: string;
   emuConfig: EmuTestConfig;
-  emuState: EmuTestState;
+  emuTestState: EmuTestState;
+  emuTestMemoryState: EmuTestMemoryState;
   container: protos.google.cloud.run.v2.IService;
   googleToken: string;
 }
@@ -38,3 +42,5 @@ export interface EmuSession {
   activeTests: Record<string, ActiveTest>;
   mcpSessions: Record<string, StreamableHTTPServerTransport>;
 }
+
+export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions/';

@@ -164,6 +164,24 @@ export class EmulationService {
     }
   }
 
+  async startTest(activeTest: ActiveTest) {
+    try {
+      console.log(`Starting test for container ${activeTest.container.uri}`);
+      const response = await axios.get(
+        `${activeTest.container.uri}/api/test/start`,
+        {
+          headers: {
+            'Authorization': `Bearer ${activeTest.googleToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    } catch (error) {
+      console.error('Error setting emulation state:', error);
+      return null;
+    }
+  }
+
   async bootGame(activeTest: ActiveTest, game_path: string) {
     try {
       console.log(`Booting game from ${game_path}`);

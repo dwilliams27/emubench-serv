@@ -204,6 +204,11 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
         name  = "GOOGLE_CLIENT_ID"
         value = var.google_client_id
       }
+
+      env {
+        name  = "OPENAI_API_KEY"
+        value = var.openai_api_key
+      }
       
       env {
         name  = "MAX_CONCURRENT_CONTAINERS"

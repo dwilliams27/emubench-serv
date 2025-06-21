@@ -1,8 +1,9 @@
-import { protos, ServicesClient } from "@google-cloud/run";
+import { JobsClient, protos, ServicesClient } from "@google-cloud/run";
 import { GoogleAuth } from "google-auth-library";
 
 export class GcpService {
   private client = new ServicesClient();
+  private jobClient = new JobsClient();
   private auth = new GoogleAuth();
 
   async getIdentityToken(targetUrl: string): Promise<string> {
@@ -16,6 +17,12 @@ export class GcpService {
     const [operation] = await this.client.createService(request);
     const [service] = await operation.promise();
     return service;
+  }
+
+  async createJob(request: protos.google.cloud.run.v2.ICreateJobRequest): Promise<protos.google.cloud.run.v2.IJob> {
+    const [operation] = await this.jobClient.createJob(request);
+    const [job] = await operation.promise();
+    return job;
   }
 
   async getIamPolicy(resource: string): Promise<[protos.google.iam.v1.IPolicy, protos.google.iam.v1.IGetIamPolicyRequest | undefined, {} | undefined]> {

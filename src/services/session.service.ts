@@ -37,7 +37,7 @@ export class SessionService {
     this.mcpSessions[mcpSessionId] = [session.activeTests[testId], transport];
 
     const activeTest = session.activeTests[testId];
-    await emulationService.setEmulationState(activeTest, 'play');
+    await emulationService.startTest(activeTest);
   }
 
   destroyMcpSession(mcpSessionId: string) {
