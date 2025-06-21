@@ -40,7 +40,7 @@ export interface EmuBootConfig {
 
 // Read in from file
 export interface EmuTestState {
-  state: 'booting' | 'ready' | 'running' | 'finished';
+  state: 'booting' | 'emulator-ready' | 'server-ready' | 'running' | 'finished';
 }
 
 export interface EmuTestMemoryState {
@@ -54,8 +54,8 @@ export interface ActiveTest {
   emuConfig: EmuTestConfig;
   emuTestState: EmuTestState;
   emuTestMemoryState: EmuTestMemoryState;
-  container: protos.google.cloud.run.v2.IService;
-  googleToken: string;
+  container?: protos.google.cloud.run.v2.IService;
+  googleToken?: string;
 }
 
 export interface EmuSession {

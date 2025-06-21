@@ -291,6 +291,8 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
           read_only = false
         }
       }
+
+      max_retries = 0
     }
   }
 

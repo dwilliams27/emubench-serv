@@ -36,6 +36,10 @@ export class GcpService {
             {
               name: 'MCP_SESSION_ID',
               value: mcpSessionId
+            },
+            {
+              name: 'OPENAI_API_KEY',
+              value: process.env.OPENAI_API_KEY
             }
           ]
         }]

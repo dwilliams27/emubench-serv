@@ -10,10 +10,10 @@ export const postMcpHandler = async (req: Request, res: Response) => {
   };
   
   try {
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
+    const emuSessionId = req.headers['mcp-session-id'] as string | undefined;
 
     if (req.mcpSession?.[1]) {
-      console.log(`Reusing MCP transport for session: ${sessionId}`);
+      console.log(`Reusing MCP transport for session: ${emuSessionId}`);
     } else {
       console.error('Invalid request: No valid session ID');
       // Invalid request
@@ -28,14 +28,14 @@ export const postMcpHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`Handling request for session: ${sessionId}`);
+    console.log(`Handling request for session: ${emuSessionId}`);
     console.log(`Request body:`, JSON.stringify(req.body, null, 2));
     
     console.log(`Calling transport.handleRequest...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res, req.body);
     const duration = Date.now() - startTime;
-    console.log(`Request handling completed in ${duration}ms for session: ${sessionId}`);
+    console.log(`Request handling completed in ${duration}ms for session: ${emuSessionId}`);
   } catch (error) {
     console.error('Error handling MCP request:', error);
     if (!res.headersSent) {

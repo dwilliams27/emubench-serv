@@ -1,8 +1,19 @@
 import { EmuBootConfig, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
-import { readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
 export class TestService {
+  async createTestSessionFolder(testId: string): Promise<boolean> {
+    try {
+      const dirPath = path.join(`${SESSION_FUSE_PATH}/${testId}`);
+      await mkdir(dirPath, { recursive: true });
+      return true;
+    } catch (error) {
+      console.error('Error creating test session dir:', error);
+    }
+    return false;
+  }
+
   async getTestState(testId: string): Promise<EmuTestState | null> {
     try {
       const testStateData = await readFile(
@@ -15,6 +26,20 @@ export class TestService {
       console.error('Error reading test_state.json:', error);
     }
     return null;
+  }
+
+  async writeTestState(testId: string, testState: EmuTestState): Promise<boolean> {
+    try {
+      await writeFile(
+        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'),
+        JSON.stringify(testState, null, 2),
+        'utf8'
+      );
+      return true;
+    } catch (error) {
+      console.error('Error writing test_state.json:', error);
+    }
+    return false;
   }
 
   async getBootConfig(testId: string): Promise<EmuBootConfig | null> {
@@ -33,7 +58,7 @@ export class TestService {
 
   async writeBootConfig(bootConfig: EmuBootConfig): Promise<boolean> {
     try {
-      const testConfigData = await writeFile(
+      await writeFile(
         path.join(`${SESSION_FUSE_PATH}/${bootConfig.testConfig.id}`, 'test_config.json'),
         JSON.stringify(bootConfig, null, 2),
         'utf8'

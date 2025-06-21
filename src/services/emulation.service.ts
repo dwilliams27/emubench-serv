@@ -12,7 +12,7 @@ export class EmulationService {
     try {
       console.log(`Sending controller input to port ${controllerPort}:`, request);
       await axios.post(
-        `${activeTest.container.uri}/api/controller/${controllerPort}`,
+        `${activeTest.container?.uri}/api/controller/${controllerPort}`,
         request,
         { 
           headers: {
@@ -32,7 +32,7 @@ export class EmulationService {
     try {
       console.log("Grabbing screenshot");
       const response = await axios.get(
-        `${activeTest.container.uri}/api/screenshot`,
+        `${activeTest.container?.uri}/api/screenshot`,
         {
           responseType: 'arraybuffer',
           headers: {
@@ -54,7 +54,7 @@ export class EmulationService {
     try {
       console.log(`Saving state to slot ${slot}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/state`,
+        `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'save', to: slot },
         {
           headers: {
@@ -73,7 +73,7 @@ export class EmulationService {
     try {
       console.log(`Loading state from slot ${slot}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/state`,
+        `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'load', to: slot },
         {
           headers: {
@@ -92,7 +92,7 @@ export class EmulationService {
     try {
       console.log(`Saving state to file ${file}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/state`,
+        `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'save', to: file },
         {
           headers: {
@@ -111,7 +111,7 @@ export class EmulationService {
     try {
       console.log(`Loading state from file ${file}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/state`,
+        `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'load', to: file },
         {
           headers: {
@@ -130,7 +130,7 @@ export class EmulationService {
     try {
       console.log(`Setting emulation speed to ${speed}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/config`,
+        `${activeTest.container?.uri}/api/emulation/config`,
         { speed },
         {
           headers: {
@@ -149,7 +149,7 @@ export class EmulationService {
     try {
       console.log(`Setting emulation state to ${action}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/state`,
+        `${activeTest.container?.uri}/api/emulation/state`,
         { action },
         {
           headers: {
@@ -166,9 +166,9 @@ export class EmulationService {
 
   async startTest(activeTest: ActiveTest) {
     try {
-      console.log(`Starting test for container ${activeTest.container.uri}`);
+      console.log(`Starting test for container ${activeTest.container?.uri}`);
       const response = await axios.get(
-        `${activeTest.container.uri}/api/test/start`,
+        `${activeTest.container?.uri}/api/test/start`,
         {
           headers: {
             'Authorization': `Bearer ${activeTest.googleToken}`,
@@ -186,7 +186,7 @@ export class EmulationService {
     try {
       console.log(`Booting game from ${game_path}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/emulation/boot`,
+        `${activeTest.container?.uri}/api/emulation/boot`,
         { game_path },
         {
           headers: {
@@ -205,7 +205,7 @@ export class EmulationService {
     try {
       console.log(`Setting up memwatches for addresses ${Object.values(watches).map((watch) => watch.address).join(", ")}`);
       const response = await axios.post(
-        `${activeTest.container.uri}/api/memwatch/setup`,
+        `${activeTest.container?.uri}/api/memwatch/setup`,
         { watches },
         {
           headers: {
@@ -224,7 +224,7 @@ export class EmulationService {
     try {
       console.log(`Reading memwatches on addresses ${names.join(", ")}`);
       const response = await axios.get(
-        `${activeTest.container.uri}/api/memwatch/values?names=${names.join(",")}`,
+        `${activeTest.container?.uri}/api/memwatch/values?names=${names.join(",")}`,
         {
           headers: {
             'Authorization': `Bearer ${activeTest.googleToken}`,

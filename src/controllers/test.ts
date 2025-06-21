@@ -22,12 +22,28 @@ export const setupTest = async (req: Request, res: Response) => {
     const mcpSessionId = genId(MCP_SESSION_ID);
 
     // Write config to bucket
+    const writeSessionFolder = await testService.createTestSessionFolder(testId);
+    if (!writeSessionFolder) {
+      console.error('Failed to create session folder');
+      res.status(500).send('Failed to create session folder');
+      return;
+    }
     const writeConfig = await testService.writeBootConfig({ testConfig, agentConfig });
     if (!writeConfig) {
       console.error('Failed to write boot config file');
       res.status(500).send('Failed to write boot config file');
       return;
     }
+
+    const activeTest: ActiveTest = {
+      id: testId,
+      mcpSessionId,
+      emuConfig: testConfig,
+      emuTestState: testState,
+      emuTestMemoryState: testMemoryState
+    }
+
+    req.emuSession.activeTests[testId] = activeTest;
 
     // Deploy game and agent
     const gamePromise = containerService.deployGame(testId, testConfig);
@@ -36,17 +52,19 @@ export const setupTest = async (req: Request, res: Response) => {
     const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
     
     const { identityToken, service } = gameContainer;
-    const activeTest: ActiveTest = {
-      id: testId,
-      mcpSessionId,
-      emuConfig: testConfig,
-      emuTestState: testState,
-      emuTestMemoryState: testMemoryState,
-      container: service,
-      googleToken: identityToken
+
+    activeTest.container = service;
+    activeTest.googleToken = identityToken;
+
+    const currentTestState = await testService.getTestState(testId);
+    if (currentTestState?.state !== "emulator-ready") {
+      console.error('Emulator is not ready after deployment');
+      res.status(500).send('Emulator is not ready after deployment');
+      return;
     }
 
-    req.emuSession.activeTests[testId] = activeTest;
+    testState.state = 'server-ready';
+    await testService.writeTestState(testId, testState);
     
     // TODO: Push to DB
 

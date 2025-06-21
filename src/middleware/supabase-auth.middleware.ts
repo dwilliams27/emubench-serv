@@ -68,7 +68,7 @@ export async function supabaseAuthMiddleware(
             return;
           }
 
-          console.log(`[AUTH] Creating new MCP session ID: ${mcpSessionId}`);
+          console.log(`[AUTH] Creating new MCP session ID: ${emuSessionId}`);
           const eventStore = new InMemoryEventStore();
           const transport = new StreamableHTTPServerTransport({
             sessionIdGenerator: () => emuSessionId,
