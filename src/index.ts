@@ -1,12 +1,8 @@
 import express from 'express';
-import cors from 'cors';
 import * as mcpController from '@/controllers/mcp';
 import * as testController from '@/controllers/test';
 import { mcpService } from '@/services/mcp.service';
 import { configDotenv } from 'dotenv';
-import { containerMiddleware } from '@/middleware/container.middleware';
-import { emulationMiddleware } from '@/middleware/emulation.middleware';
-import { mcpMiddleware } from '@/middleware/mcp.middleware';
 import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
 
 configDotenv();
@@ -25,10 +21,6 @@ app.use((req, res, next) => {
     next();
   }
 });
-
-app.use(containerMiddleware);
-app.use(emulationMiddleware);
-app.use(mcpMiddleware);
 
 // MCP
 app.get('/mcp', supabaseAuthMiddleware, mcpController.getMcpHandler);

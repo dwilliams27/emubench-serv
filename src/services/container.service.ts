@@ -53,8 +53,6 @@ export class ContainerService {
     };
 
     const service = await gcpService.createService(request);
-
-    await this.grantInvokePermission(testId, location);
     const identityToken = await this.getIdentityToken(service.uri!);
 
     console.log(`Service ${testId} deployed at ${service.uri}`);
@@ -87,31 +85,6 @@ export class ContainerService {
 
   async runAgent(testId: string, mcpSessionId: string, authToken: string) {
     await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, authToken, mcpSessionId);
-  }
-
-  private async grantInvokePermission(serviceId: string, location: string) {
-    try {
-      const policy = await gcpService.getIamPolicy(`projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`);
-
-      const binding = {
-        role: 'roles/run.invoker',
-        members: [`serviceAccount:emubench-cloud-run-sa@${process.env.PROJECT_ID}.iam.gserviceaccount.com`]
-      };
-
-      if (!policy[0].bindings) {
-        policy[0].bindings = [];
-      }
-      policy[0].bindings.push(binding);
-
-      await gcpService.setIamPolicy({
-        resource: `projects/${process.env.PROJECT_ID}/locations/${location}/services/${serviceId}`,
-        policy: policy[0]
-      });
-
-      console.log(`Granted invoke permission for service ${serviceId}`);
-    } catch (error) {
-      console.error(`Failed to grant invoke permission for service ${serviceId}:`, error);
-    }
   }
 
   private async getIdentityToken(targetUrl: string): Promise<string> {

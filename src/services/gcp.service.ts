@@ -21,7 +21,7 @@ export class GcpService {
 
   async runJob(testPath: string, authToken: string, mcpSessionId: string): Promise<boolean> {
     await this.jobClient.runJob({
-      name: `projects/${process.env.PROJECT_ID}/locations/us-central1/jobs/agent-job`,
+      name: `projects/${process.env.PROJECT_ID}/locations/us-central1/jobs/emubench-agent-job`,
       overrides: {
         containerOverrides: [{
           env: [

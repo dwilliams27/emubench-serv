@@ -8,9 +8,6 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 declare global {
   namespace Express {
     interface Request {
-      containerService: ContainerService;
-      emulationService: EmulationService;
-      mcpService: McpService;
       emuSession: EmuSession;
       mcpSession?: [ActiveTest, StreamableHTTPServerTransport];
       user?: {

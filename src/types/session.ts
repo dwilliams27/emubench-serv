@@ -18,6 +18,26 @@ export interface EmuTestConfig {
   endStateMemWatches: Record<string, MemoryWatch>;
 };
 
+export interface EmuTask {
+  name: string;
+  description: string;
+}
+
+export interface EmuAgentConfig {
+  systemPrompt: string;
+  llmProvider: 'openai' | 'anthropic' | 'google';
+  model: string;
+  maxIterations: number;
+  temperature: number;
+  mcpServerEndpoint: string;
+  task: EmuTask;
+};
+
+export interface EmuBootConfig {
+  testConfig: EmuTestConfig;
+  agentConfig: EmuAgentConfig;
+}
+
 // Read in from file
 export interface EmuTestState {
   state: 'booting' | 'ready' | 'running' | 'finished';
@@ -43,4 +63,4 @@ export interface EmuSession {
   mcpSessions: Record<string, StreamableHTTPServerTransport>;
 }
 
-export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions/';
+export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions';

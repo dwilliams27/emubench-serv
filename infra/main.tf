@@ -280,7 +280,7 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
         
         volume_mounts {
           name       = "session-mount"
-          mount_path = "/tmp/gcs/session"
+          mount_path = "/tmp/gcs/emubench-sessions"
         }
       }
       

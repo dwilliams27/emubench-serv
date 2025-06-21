@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sessionService } from '@/services/session.service';
 import { InMemoryEventStore } from '@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { mcpService } from '@/services/mcp.service';
 
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -83,7 +84,7 @@ export async function supabaseAuthMiddleware(
           };
 
           console.log(`Connecting transport to MCP server...`);
-          await req.mcpService.getServer().connect(transport);
+          await mcpService.getServer().connect(transport);
           await sessionService.addMcpSession(req.emuSession, emuSessionId, testId, transport);
           console.log(`Transport connected to MCP server successfully`);
 

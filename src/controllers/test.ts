@@ -1,15 +1,17 @@
-import { ActiveTest, EmuTestConfig, EmuTestMemoryState, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
+import { containerService } from "@/services/container.service";
+import { emulationService } from "@/services/emulation.service";
+import { testService } from "@/services/test.service";
+import { ActiveTest, EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
 import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
-import { readFile } from "fs/promises";
-import path from "path";
 
 export const setupTest = async (req: Request, res: Response) => {
   console.log('Setting up test');
 
   try {
     const testId = genId(TEST_ID);
-    const testConfig: EmuTestConfig = { ...req.body.config, id: testId };
+    const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
+    const agentConfig: EmuAgentConfig = { ...req.body.agentConfig, mcpServerEndpoint: 'https://api.emubench.com/mcp' };
     const testState: EmuTestState = {
       state: 'booting',
     };
@@ -19,12 +21,21 @@ export const setupTest = async (req: Request, res: Response) => {
     }
     const mcpSessionId = genId(MCP_SESSION_ID);
 
-    // Deploy game and agent
-    const gamePromise = req.containerService.deployGame(testId, testConfig);
-    const agentPromise = req.containerService.runAgent(testId, mcpSessionId, req.headers['Authorization'] as string);
-    const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
-    const { identityToken, service } = gameContainer;
+    // Write config to bucket
+    const writeConfig = await testService.writeBootConfig({ testConfig, agentConfig });
+    if (!writeConfig) {
+      console.error('Failed to write boot config file');
+      res.status(500).send('Failed to write boot config file');
+      return;
+    }
 
+    // Deploy game and agent
+    const gamePromise = containerService.deployGame(testId, testConfig);
+    const agentPromise = containerService.runAgent(testId, mcpSessionId, req.headers.authorization!.substring(7));
+
+    const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
+    
+    const { identityToken, service } = gameContainer;
     const activeTest: ActiveTest = {
       id: testId,
       mcpSessionId,
@@ -36,22 +47,6 @@ export const setupTest = async (req: Request, res: Response) => {
     }
 
     req.emuSession.activeTests[testId] = activeTest;
-
-    console.log('State:', activeTest.emuTestState);
-
-    try {
-      const testStateData = await readFile(
-        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'), 
-        'utf8'
-      );
-      const testStateFromFile = JSON.parse(testStateData) as EmuTestState;
-      if (testStateFromFile.state === "booting") {
-        console.warn(`Test state from file is not ready: ${testStateFromFile.state}`);
-      }
-      activeTest.emuTestState = testStateFromFile;
-    } catch (error) {
-      console.error('Error reading test_state.json:', error);
-    }
     
     // TODO: Push to DB
 
@@ -76,8 +71,8 @@ export const getEmuTestState = async (req: Request, res: Response): Promise<{ st
     res.status(400).send(`No active test found for id ${req.params.testId}`);
     return {};
   }
-  const contextMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.contextMemWatches))).values;
-  const endStateMemWatchValues = (await req.emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.endStateMemWatches))).values;
+  const contextMemWatchValues = (await emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.contextMemWatches))).values;
+  const endStateMemWatchValues = (await emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.endStateMemWatches))).values;
 
   activeTest.emuTestMemoryState.contextMemWatchValues = contextMemWatchValues;
   activeTest.emuTestMemoryState.endStateMemWatchValues = endStateMemWatchValues;
@@ -85,6 +80,7 @@ export const getEmuTestState = async (req: Request, res: Response): Promise<{ st
   // TODO: Pull in LLM messages
 
   return {
+    // TODO: Fetch this from file evey time
     state: activeTest.emuTestState,
     memoryState: activeTest.emuTestMemoryState
   }
