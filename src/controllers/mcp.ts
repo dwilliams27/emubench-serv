@@ -1,3 +1,4 @@
+import { containerService } from '@/services/container.service';
 import { Request, Response } from 'express';
 
 export const postMcpHandler = async (req: Request, res: Response) => {
@@ -110,6 +111,15 @@ export const deleteMcpHandler = async (req: Request, res: Response) => {
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res);
     const duration = Date.now() - startTime;
+
+    const serviceName = req.mcpSession?.[0].container?.name;
+    if (!serviceName) {
+      res.status(400).send(`No active service found`);
+      return;
+    }
+    console.log(`Destroying service ${serviceName}`);
+    await containerService.destroyGame(serviceName);
+
     console.log(`Session termination completed in ${duration}ms for session: ${req.mcpSession[0]}`);
   } catch (error) {
     console.error('Error handling DELETE request:', error);

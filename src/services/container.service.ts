@@ -1,6 +1,6 @@
 import { gcpService } from '@/services/gcp.service';
 import { EmuTestConfig, SESSION_FUSE_PATH } from '@/types/session';
-import { protos, ServicesClient } from '@google-cloud/run';
+import { protos } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";
 
@@ -81,6 +81,15 @@ export class ContainerService {
     }
 
     return { identityToken, service };
+  }
+
+  async destroyGame(serviceName: string) {
+    try {
+      await gcpService.deleteService(serviceName);
+      console.log(`Service ${serviceName} deleted successfully`);
+    } catch (error) {
+      console.error(`Failed to delete service ${serviceName}: ${(error as any).message}`);
+    }
   }
 
   async runAgent(testId: string, mcpSessionId: string, authToken: string) {

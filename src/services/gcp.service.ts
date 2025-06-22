@@ -19,6 +19,11 @@ export class GcpService {
     return service;
   }
 
+  async deleteService(name: string): Promise<void> {
+    const [operation] = await this.client.deleteService({ name });
+    await operation.promise();
+  }
+
   async runJob(testPath: string, authToken: string, mcpSessionId: string): Promise<boolean> {
     await this.jobClient.runJob({
       name: `projects/${process.env.PROJECT_ID}/locations/us-central1/jobs/emubench-agent-job`,
