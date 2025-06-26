@@ -93,9 +93,14 @@ export class McpService {
           ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
           frames: durationToFrames(duration),
         }
-
         
-        await emulationService.postControllerInput(activeTest, ipcRequest);
+        const inputResponse = await emulationService.postControllerInput(activeTest, ipcRequest);
+        if (inputResponse) {
+          activeTest.emuTestMemoryState.endStateMemWatchValues = inputResponse.endStateMemWatchValues;
+          activeTest.emuTestMemoryState.contextMemWatchValues = inputResponse.contextMemWatchValues;
+        } else {
+          console.warn('Issue fetching memwatches from input req.')
+        }
 
         return {
           content: [

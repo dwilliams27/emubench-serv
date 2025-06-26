@@ -2,16 +2,21 @@ import { IpcControllerInputRequest, MemoryWatch } from "@/types/gamecube";
 import { ActiveTest } from "@/types/session";
 import axios from "axios";
 
+export interface PostControllerInputResponse {
+  contextMemWatchValues: Record<string, string>;
+  endStateMemWatchValues: Record<string, string>;
+};
+
 export class EmulationService {
   async postControllerInput(
     activeTest: ActiveTest,
     request: IpcControllerInputRequest,
     controllerPort = 0,
-  ) {
+  ): Promise<PostControllerInputResponse | null> {
     request.connected = true;
     try {
       console.log(`Sending controller input to port ${controllerPort}:`, request);
-      await axios.post(
+      const response = await axios.post(
         `${activeTest.container?.uri}/api/controller/${controllerPort}`,
         request,
         { 
@@ -21,11 +26,11 @@ export class EmulationService {
           } 
         }
       );
+      return response.data;
     } catch (error) {
       console.error('Error sending controller input:', error);
-      return false;
+      return null;
     }
-    return true;
   }
 
   async getScreenshot(activeTest: ActiveTest) {

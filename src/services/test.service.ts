@@ -1,5 +1,5 @@
 import { EmuBootConfig, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
 export class TestService {
@@ -68,6 +68,12 @@ export class TestService {
       console.error('Error writing test_config.json:', error);
     }
     return false;
+  }
+
+  async getScreenshots(testId: string): Promise<string[]> {
+    const screenshotPath = path.join(`${SESSION_FUSE_PATH}/${testId}`, 'ScreenShots');
+    const files = await readdir(screenshotPath);
+    return files.sort();
   }
 }
 

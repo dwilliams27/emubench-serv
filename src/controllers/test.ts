@@ -1,7 +1,8 @@
 import { containerService } from "@/services/container.service";
 import { emulationService } from "@/services/emulation.service";
+import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
-import { ActiveTest, EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
+import { ActiveTest, EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/session";
 import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
@@ -79,27 +80,36 @@ export const getEmuTestConfigs = async (req: Request, res: Response) => {
   // TODO: Fetch from DB
 }
 
-export const getEmuTestState = async (req: Request, res: Response): Promise<{ state?: EmuTestState, memoryState?: EmuTestMemoryState }> => {
+export const getEmuTestState = async (req: Request, res: Response) => {
   if (!req.params.testId) {
     res.status(400).send('Must specify testId');
-    return {};
+    return;
   }
   const activeTest = req.emuSession.activeTests[req.params.testId];
   if (!activeTest) {
     res.status(400).send(`No active test found for id ${req.params.testId}`);
-    return {};
+    return;
   }
-  const contextMemWatchValues = (await emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.contextMemWatches))).values;
-  const endStateMemWatchValues = (await emulationService.readMemWatches(activeTest, Object.keys(activeTest.emuConfig.endStateMemWatches))).values;
+  const testId = activeTest.emuConfig.id;
 
-  activeTest.emuTestMemoryState.contextMemWatchValues = contextMemWatchValues;
-  activeTest.emuTestMemoryState.endStateMemWatchValues = endStateMemWatchValues;
-  // TODO: Fetch image from bucket
+  // Screenshots
+  const screenshots = await testService.getScreenshots(testId);
+  const signedUrlsPromises = screenshots.map((screenshot) => new Promise(async (res) => {
+    const url = await gcpService.getSignedURL('emubench-sessions', `${testId}/ScreenShots/${screenshot}`);
+    res([screenshot, url])
+  }));
+  const signedUrls = await Promise.all(signedUrlsPromises);
+
+  // Current test state
+  const currentTestState = await testService.getTestState(testId);
+
+  // TODO: memwatches (ensure emuTestMemoryState is hydrated from input tool response?)
+
   // TODO: Pull in LLM messages
 
-  return {
-    // TODO: Fetch this from file evey time
-    state: activeTest.emuTestState,
-    memoryState: activeTest.emuTestMemoryState
-  }
+  res.send({
+    state: currentTestState,
+    memoryState: activeTest.emuTestMemoryState,
+    screenshots: signedUrls
+  });
 }

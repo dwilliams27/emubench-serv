@@ -2,25 +2,27 @@ import { JobsClient, protos, ServicesClient } from "@google-cloud/run";
 import { GoogleAuth } from "google-auth-library";
 
 export class GcpService {
-  private client = new ServicesClient();
+  private servicesClient = new ServicesClient();
   private jobClient = new JobsClient();
+  private storage = new Storage();
   private auth = new GoogleAuth();
+  private signedUrlCache: Record<string, string> = {};
 
   async getIdentityToken(targetUrl: string): Promise<string> {
-    const client = await this.auth.getIdTokenClient(targetUrl);
-    const idToken = await client.idTokenProvider.fetchIdToken(targetUrl);
+    const servicesClient = await this.auth.getIdTokenClient(targetUrl);
+    const idToken = await servicesClient.idTokenProvider.fetchIdToken(targetUrl);
     
     return idToken;
   }
 
   async createService(request: protos.google.cloud.run.v2.ICreateServiceRequest): Promise<protos.google.cloud.run.v2.IService> {
-    const [operation] = await this.client.createService(request);
+    const [operation] = await this.servicesClient.createService(request);
     const [service] = await operation.promise();
     return service;
   }
 
   async deleteService(name: string): Promise<void> {
-    const [operation] = await this.client.deleteService({ name });
+    const [operation] = await this.servicesClient.deleteService({ name });
     await operation.promise();
   }
 
@@ -54,14 +56,30 @@ export class GcpService {
   }
 
   async getIamPolicy(resource: string): Promise<[protos.google.iam.v1.IPolicy, protos.google.iam.v1.IGetIamPolicyRequest | undefined, {} | undefined]> {
-    const policy = await this.client.getIamPolicy({
+    const policy = await this.servicesClient.getIamPolicy({
       resource
     });
     return policy;
   }
 
   async setIamPolicy(request: protos.google.iam.v1.ISetIamPolicyRequest) {
-    await this.client.setIamPolicy(request);
+    await this.servicesClient.setIamPolicy(request);
+  }
+
+  async getSignedURL(bucketName: string, filePath: string) {
+    if (this.signedUrlCache[`${bucketName}${filePath}`]) {
+      return this.signedUrlCache[`${bucketName}${filePath}`];
+    }
+
+    const bucket = this.storage.bucket(bucketName);
+    const file = bucket.file(filePath);
+
+    const [url] = await file.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    });
+    return url;
   }
 }
 

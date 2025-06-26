@@ -68,19 +68,19 @@ export const getMcpHandler = async (req: Request, res: Response) => {
     if (lastEventId) {
       console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
     } else {
-      console.log(`Establishing new SSE stream for session ${sessionId}`);
+      console.log(`Establishing new stream for session ${sessionId}`);
     }
     
     // Set up connection close monitoring
     res.on('close', () => {
-      console.log(`SSE connection closed for session ${sessionId}`);
+      console.log(`Connection closed for session ${sessionId}`);
     });
     
-    console.log(`Starting SSE transport.handleRequest for session ${sessionId}...`);
+    console.log(`Starting transport.handleRequest for session ${sessionId}...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res);
     const duration = Date.now() - startTime;
-    console.log(`SSE stream setup completed in ${duration}ms for session: ${sessionId}`);
+    console.log(`Setup completed in ${duration}ms for session: ${sessionId}`);
   } catch (error) {
     console.error('Error handling GET request:', error);
     if (!res.headersSent) {

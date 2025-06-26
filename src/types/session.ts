@@ -13,6 +13,7 @@ export interface EmuTestConfig {
   id: string;
   gameId: string;
   platform: 'gamecube';
+  mode: 'turn-based' | 'real-time';
   startStateFilename: string;
   contextMemWatches: Record<string, MemoryWatch>;
   endStateMemWatches: Record<string, MemoryWatch>;
