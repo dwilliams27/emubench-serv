@@ -114,10 +114,12 @@ export class McpService {
     );
 
     this.server.tool(
-      'viewScreen',
-      'Gives a screenshot of the game',
-      {},
-      async (_, context): Promise<CallToolResult> => {
+      'wait',
+      'Wait for a specific number of frames',
+      {
+        frames: z.number().min(1).describe("The number of frames to wait for"),
+      },
+      async ({ frames }, context): Promise<CallToolResult> => {
         let activeTest;
         try {
           activeTest = this.getActiveTest(context);
@@ -132,23 +134,12 @@ export class McpService {
           };
         }
 
-        const rawData = await emulationService.getScreenshot(activeTest);
-        if (!rawData) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Failed to get screenshot",
-              }
-            ],
-          };
-        }
+        await emulationService.postControllerInput(activeTest, { connected: true, frames });
         return {
           content: [
             {
-              type: "image",
-              data: rawData,
-              mimeType: "image/png",
+              type: "text",
+              text: `Done waiting for ${frames} frames!`,
             },
           ],
         };

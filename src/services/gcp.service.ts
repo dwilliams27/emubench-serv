@@ -1,4 +1,5 @@
 import { JobsClient, protos, ServicesClient } from "@google-cloud/run";
+import { Storage } from "@google-cloud/storage";
 import { GoogleAuth } from "google-auth-library";
 
 export class GcpService {
