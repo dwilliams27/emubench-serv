@@ -67,7 +67,7 @@ export class McpService {
              r: z.boolean().optional().describe("Press/release the Right Trigger"),
           }).optional().describe("Specify analog trigger pressure. Omit to leave unchanged."),
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
-        duration: z.number().min(5).describe("How how many frames to press the buttons"),
+        duration: z.number().describe("How how many frames to press the buttons. MUST BE GREATER THAN 5"),
       },
       async ({ actions, duration }, context): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
@@ -91,7 +91,7 @@ export class McpService {
           ...((actions.buttons || actions.triggers) ? { buttons: { ...actions.buttons, ...actions.triggers } } : {}),
           ...(actions.mainStick?.direction ? { mainStick: directionToStickPosition(actions.mainStick?.direction) } : {}),
           ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
-          frames: duration,
+          frames: duration > 5 ? duration : 5,
         }
         
         const inputResponse = await emulationService.postControllerInput(activeTest, ipcRequest);
