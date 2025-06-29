@@ -48,6 +48,14 @@ export class GcpService {
             {
               name: 'OPENAI_API_KEY',
               value: process.env.OPENAI_API_KEY
+            },
+            {
+              name: 'ANTHROPIC_API_KEY',
+              value: process.env.ANTHROPIC_API_KEY
+            },
+            {
+              name: 'GOOGLE_API_KEY',
+              value: process.env.GOOGLE_API_KEY
             }
           ]
         }]

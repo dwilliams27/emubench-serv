@@ -69,6 +69,18 @@ variable "openai_api_key" {
   sensitive   = true
 }
 
+variable "anthropic_api_key" {
+  description = "Anthropic API key"
+  type        = string
+  sensitive   = true
+}
+
+variable "google_api_key" {
+  description = "Google API key"
+  type        = string
+  sensitive   = true
+}
+
 variable "project_id" {
   description = "GCP Project ID"
   type        = string

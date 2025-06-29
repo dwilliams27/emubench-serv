@@ -209,6 +209,16 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
         name  = "OPENAI_API_KEY"
         value = var.openai_api_key
       }
+
+      env {
+        name  = "ANTHROPIC_API_KEY"
+        value = var.anthropic_api_key
+      }
+
+      env {
+        name  = "GOOGLE_API_KEY"
+        value = var.google_api_key
+      }
       
       env {
         name  = "MAX_CONCURRENT_CONTAINERS"
