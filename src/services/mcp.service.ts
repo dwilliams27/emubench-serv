@@ -105,9 +105,9 @@ export class McpService {
         return {
           content: [
             {
-              type: 'text',
-              text: `Done!`,
-            }
+              type: "text",
+              text: JSON.stringify(inputResponse),
+            },
           ],
         };
       }
@@ -134,12 +134,20 @@ export class McpService {
           };
         }
 
-        await emulationService.postControllerInput(activeTest, { connected: true, frames });
+        const inputResponse = await emulationService.postControllerInput(activeTest, { connected: true, frames });
+        // TODO: Does serv need to know?
+        if (inputResponse) {
+          activeTest.emuTestMemoryState.endStateMemWatchValues = inputResponse.endStateMemWatchValues;
+          activeTest.emuTestMemoryState.contextMemWatchValues = inputResponse.contextMemWatchValues;
+        } else {
+          console.warn('Issue fetching memwatches from input req.')
+        }
+
         return {
           content: [
             {
               type: "text",
-              text: `Done waiting for ${frames} frames!`,
+              text: JSON.stringify(inputResponse),
             },
           ],
         };

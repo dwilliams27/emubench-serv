@@ -5,6 +5,7 @@ import axios from "axios";
 export interface PostControllerInputResponse {
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
+  screenshot: string;
 };
 
 export class EmulationService {
