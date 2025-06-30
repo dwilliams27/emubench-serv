@@ -75,7 +75,7 @@ variable "anthropic_api_key" {
   sensitive   = true
 }
 
-variable "google_api_key" {
+variable "google_generative_ai_api_key" {
   description = "Google API key"
   type        = string
   sensitive   = true

@@ -26,6 +26,7 @@ export interface EmuTask {
 
 export interface EmuAgentConfig {
   systemPrompt: string;
+  gameContext: string;
   llmProvider: 'openai' | 'anthropic' | 'google';
   model: string;
   maxIterations: number;

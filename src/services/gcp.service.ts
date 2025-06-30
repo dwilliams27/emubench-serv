@@ -54,8 +54,8 @@ export class GcpService {
               value: process.env.ANTHROPIC_API_KEY
             },
             {
-              name: 'GOOGLE_API_KEY',
-              value: process.env.GOOGLE_API_KEY
+              name: 'GOOGLE_GENERATIVE_AI_API_KEY',
+              value: process.env.GOOGLE_GENERATIVE_AI_API_KEY
             }
           ]
         }]

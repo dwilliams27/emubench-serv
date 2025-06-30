@@ -216,8 +216,8 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
       }
 
       env {
-        name  = "GOOGLE_API_KEY"
-        value = var.google_api_key
+        name  = "GOOGLE_GENERATIVE_AI_API_KEY"
+        value = var.google_generative_ai_api_key
       }
       
       env {

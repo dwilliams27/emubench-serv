@@ -12,6 +12,7 @@ export const setupTest = async (req: Request, res: Response) => {
   try {
     const testId = genId(TEST_ID);
     const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
+    // TODO: Pull gameContext from DB eventually
     const agentConfig: EmuAgentConfig = { ...req.body.agentConfig, mcpServerEndpoint: 'https://api.emubench.com/mcp' };
     const testState: EmuTestState = {
       state: 'booting',
