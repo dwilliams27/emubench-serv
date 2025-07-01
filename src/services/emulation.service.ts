@@ -1,6 +1,7 @@
 import { IpcControllerInputRequest, MemoryWatch } from "@/types/gamecube";
 import { ActiveTest } from "@/types/session";
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
+import { Agent } from "https";
 
 export interface PostControllerInputResponse {
   contextMemWatchValues: Record<string, string>;
@@ -9,6 +10,20 @@ export interface PostControllerInputResponse {
 };
 
 export class EmulationService {
+  private axiosInstance: AxiosInstance;
+
+  constructor() {
+    this.axiosInstance = axios.create({
+      timeout: 30000,
+      httpsAgent: new Agent({ 
+        keepAlive: true,
+        maxSockets: 50,
+        maxFreeSockets: 10,
+        timeout: 30000,
+      }),
+    });
+  }
+
   async postControllerInput(
     activeTest: ActiveTest,
     request: IpcControllerInputRequest,
@@ -17,7 +32,7 @@ export class EmulationService {
     request.connected = true;
     try {
       console.log(`Sending controller input to port ${controllerPort}:`, request);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/controller/${controllerPort}`,
         request,
         { 
@@ -37,7 +52,7 @@ export class EmulationService {
   async getScreenshot(activeTest: ActiveTest) {
     try {
       console.log("Grabbing screenshot");
-      const response = await axios.get(
+      const response = await this.axiosInstance.get(
         `${activeTest.container?.uri}/api/screenshot`,
         {
           responseType: 'arraybuffer',
@@ -59,7 +74,7 @@ export class EmulationService {
   async saveStateSlot(activeTest: ActiveTest, slot: number) {
     try {
       console.log(`Saving state to slot ${slot}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'save', to: slot },
         {
@@ -78,7 +93,7 @@ export class EmulationService {
   async loadStateSlot(activeTest: ActiveTest, slot: number) {
     try {
       console.log(`Loading state from slot ${slot}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'load', to: slot },
         {
@@ -97,7 +112,7 @@ export class EmulationService {
   async saveStateFile(activeTest: ActiveTest, file: string) {
     try {
       console.log(`Saving state to file ${file}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'save', to: file },
         {
@@ -116,7 +131,7 @@ export class EmulationService {
   async loadStateFile(activeTest: ActiveTest, file: string) {
     try {
       console.log(`Loading state from file ${file}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/state`,
         { action: 'load', to: file },
         {
@@ -135,7 +150,7 @@ export class EmulationService {
   async setEmulationSpeed(activeTest: ActiveTest, speed: number) {
     try {
       console.log(`Setting emulation speed to ${speed}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/config`,
         { speed },
         {
@@ -154,7 +169,7 @@ export class EmulationService {
   async setEmulationState(activeTest: ActiveTest, action: "play" | "pause") {
     try {
       console.log(`Setting emulation state to ${action}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/state`,
         { action },
         {
@@ -173,7 +188,7 @@ export class EmulationService {
   async startTest(activeTest: ActiveTest) {
     try {
       console.log(`Starting test for container ${activeTest.container?.uri}`);
-      const response = await axios.get(
+      const response = await this.axiosInstance.get(
         `${activeTest.container?.uri}/api/test/start`,
         {
           headers: {
@@ -191,7 +206,7 @@ export class EmulationService {
   async bootGame(activeTest: ActiveTest, game_path: string) {
     try {
       console.log(`Booting game from ${game_path}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/emulation/boot`,
         { game_path },
         {
@@ -210,7 +225,7 @@ export class EmulationService {
   async setupMemWatches(activeTest: ActiveTest, watches: Record<string, MemoryWatch>) {
     try {
       console.log(`Setting up memwatches for addresses ${Object.values(watches).map((watch) => watch.address).join(", ")}`);
-      const response = await axios.post(
+      const response = await this.axiosInstance.post(
         `${activeTest.container?.uri}/api/memwatch/setup`,
         { watches },
         {
@@ -229,7 +244,7 @@ export class EmulationService {
   async readMemWatches(activeTest: ActiveTest, names: string[]): Promise<{ values: Record<string, string> }> {
     try {
       console.log(`Reading memwatches on addresses ${names.join(", ")}`);
-      const response = await axios.get(
+      const response = await this.axiosInstance.get(
         `${activeTest.container?.uri}/api/memwatch/values?names=${names.join(",")}`,
         {
           headers: {

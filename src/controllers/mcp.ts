@@ -9,7 +9,7 @@ export const postMcpHandler = async (req: Request, res: Response) => {
     console.log(`Response being sent:`, JSON.stringify(body, null, 2));
     return originalJson.call(this, body);
   };
-  
+
   try {
     const emuSessionId = req.headers['mcp-session-id'] as string | undefined;
 

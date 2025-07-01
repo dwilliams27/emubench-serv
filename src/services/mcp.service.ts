@@ -1,7 +1,7 @@
 import { emulationService } from "@/services/emulation.service";
 import { sessionService } from "@/services/session.service";
 import { ActiveTest } from "@/types/session";
-import { directionToStickPosition, durationToFrames } from "@/utils/tools";
+import { directionToStickPosition } from "@/utils/tools";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -67,7 +67,7 @@ export class McpService {
              r: z.boolean().optional().describe("Press/release the Right Trigger"),
           }).optional().describe("Specify analog trigger pressure. Omit to leave unchanged."),
         }).describe("Define the controller actions to perform. Only include the controls you want to change."),
-        duration: z.number().describe("How how many frames to press the buttons. MUST BE GREATER THAN 5"),
+        duration: z.enum(["5", "15", "30", "60"]).describe("How how many frames to press the buttons."),
       },
       async ({ actions, duration }, context): Promise<CallToolResult> => {
         console.log('Received request to press button:', actions);
@@ -91,7 +91,7 @@ export class McpService {
           ...((actions.buttons || actions.triggers) ? { buttons: { ...actions.buttons, ...actions.triggers } } : {}),
           ...(actions.mainStick?.direction ? { mainStick: directionToStickPosition(actions.mainStick?.direction) } : {}),
           ...(actions.cStick?.direction ? { cStick: directionToStickPosition(actions.cStick?.direction) } : {}),
-          frames: duration > 5 ? duration : 5,
+          frames: parseInt(duration),
         }
         
         const inputResponse = await emulationService.postControllerInput(activeTest, ipcRequest);
