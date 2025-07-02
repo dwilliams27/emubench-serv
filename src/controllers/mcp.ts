@@ -2,11 +2,11 @@ import { containerService } from '@/services/container.service';
 import { Request, Response } from 'express';
 
 export const postMcpHandler = async (req: Request, res: Response) => {
-  console.log(`Request received: ${req.method} ${req.url}`, {body: req.body});
+  console.log(`[MCP] Request received: ${req.method} ${req.url}`, JSON.stringify({body: req.body}));
 
   const originalJson = res.json;
   res.json = function(body) {
-    console.log(`Response being sent:`, JSON.stringify(body, null, 2));
+    console.log(`[MCP] Response being sent:`, JSON.stringify(body, null, 2));
     return originalJson.call(this, body);
   };
 
@@ -14,7 +14,7 @@ export const postMcpHandler = async (req: Request, res: Response) => {
     const emuSessionId = req.headers['mcp-session-id'] as string | undefined;
 
     if (req.mcpSession?.[1]) {
-      console.log(`Reusing MCP transport for session: ${emuSessionId}`);
+      console.log(`[MCP] Reusing MCP transport for session: ${emuSessionId}`);
     } else {
       console.error('Invalid request: No valid session ID');
       // Invalid request
@@ -29,14 +29,14 @@ export const postMcpHandler = async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(`Handling request for session: ${emuSessionId}`);
-    console.log(`Request body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[MCP] Handling request for session: ${emuSessionId}`);
+    console.log(`[MCP] Request body:`, JSON.stringify(req.body, null, 2));
     
-    console.log(`Calling transport.handleRequest...`);
+    console.log(`[MCP] Calling transport.handleRequest...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res, req.body);
     const duration = Date.now() - startTime;
-    console.log(`Request handling completed in ${duration}ms for session: ${emuSessionId}`);
+    console.log(`[MCP] Request handling completed in ${duration}ms for session: ${emuSessionId}`);
   } catch (error) {
     console.error('Error handling MCP request:', error);
     if (!res.headersSent) {
@@ -53,12 +53,12 @@ export const postMcpHandler = async (req: Request, res: Response) => {
 }
 
 export const getMcpHandler = async (req: Request, res: Response) => {
-  console.log(`GET Request received: ${req.method} ${req.url}`);
+  console.log(`[MCP] GET Request received: ${req.method} ${req.url}`);
 
   try {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     if (!req.mcpSession) {
-      console.log(`Invalid session ID in GET request: ${sessionId}`);
+      console.log(`[MCP] Invalid session ID in GET request: ${sessionId}`);
       res.status(400).send('Invalid or missing session ID');
       return;
     }
@@ -66,21 +66,21 @@ export const getMcpHandler = async (req: Request, res: Response) => {
     // Check for Last-Event-ID header for resumability
     const lastEventId = req.headers['last-event-id'] as string | undefined;
     if (lastEventId) {
-      console.log(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
+      console.log(`[MCP] Client reconnecting with Last-Event-ID: ${lastEventId}`);
     } else {
-      console.log(`Establishing new stream for session ${sessionId}`);
+      console.log(`[MCP] Establishing new stream for session ${sessionId}`);
     }
     
     // Set up connection close monitoring
     res.on('close', () => {
-      console.log(`Connection closed for session ${sessionId}`);
+      console.log(`[MCP] Connection closed for session ${sessionId}`);
     });
     
-    console.log(`Starting transport.handleRequest for session ${sessionId}...`);
+    console.log(`[MCP] Starting transport.handleRequest for session ${sessionId}...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res);
     const duration = Date.now() - startTime;
-    console.log(`Setup completed in ${duration}ms for session: ${sessionId}`);
+    console.log(`[MCP] Setup completed in ${duration}ms for session: ${sessionId}`);
   } catch (error) {
     console.error('Error handling GET request:', error);
     if (!res.headersSent) {
@@ -90,24 +90,24 @@ export const getMcpHandler = async (req: Request, res: Response) => {
 }
 
 export const deleteMcpHandler = async (req: Request, res: Response) => {
-  console.log(`DELETE Request received: ${req.method} ${req.url}`);
+  console.log(`[MCP] DELETE Request received: ${req.method} ${req.url}`);
   try {
     if (!req.mcpSession) {
-      console.log(`Invalid session ID in DELETE request`);
+      console.log(`[MCP] Invalid session ID in DELETE request`);
       res.status(400).send('Invalid or missing session ID');
       return;
     }
 
-    console.log(`Received session termination request for session ${req.mcpSession[0]}`);
+    console.log(`[MCP] Received session termination request for session ${req.mcpSession[0]}`);
 
     // Capture response for logging
     const originalSend = res.send;
     res.send = function(body) {
-      console.log(`DELETE response being sent:`, body);
+      console.log(`[MCP] DELETE response being sent: ${JSON.stringify(body)}`);
       return originalSend.call(this, body);
     };
     
-    console.log(`Processing session termination...`);
+    console.log(`[MCP] Processing session termination...`);
     const startTime = Date.now();
     await req.mcpSession[1].handleRequest(req, res);
     const duration = Date.now() - startTime;
@@ -117,10 +117,10 @@ export const deleteMcpHandler = async (req: Request, res: Response) => {
       res.status(400).send(`No active service found`);
       return;
     }
-    console.log(`Destroying service ${serviceName}`);
+    console.log(`[MCP] Destroying service ${serviceName}`);
     await containerService.destroyGame(serviceName);
 
-    console.log(`Session termination completed in ${duration}ms for session: ${req.mcpSession[0]}`);
+    console.log(`[MCP] Session termination completed in ${duration}ms for session: ${req.mcpSession[0]}`);
   } catch (error) {
     console.error('Error handling DELETE request:', error);
     if (!res.headersSent) {

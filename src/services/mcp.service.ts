@@ -70,12 +70,11 @@ export class McpService {
         duration: z.enum(["5", "15", "30", "60"]).describe("How how many frames to press the buttons."),
       },
       async ({ actions, duration }, context): Promise<CallToolResult> => {
-        console.log('Received request to press button:', actions);
-
         let activeTest;
         try {
           activeTest = this.getActiveTest(context);
         } catch (error) {
+          console.log(`[MCP] Error getting active test for tool call`)
           return {
             content: [
               {

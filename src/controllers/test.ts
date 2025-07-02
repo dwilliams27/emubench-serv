@@ -7,7 +7,7 @@ import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
 export const setupTest = async (req: Request, res: Response) => {
-  console.log('Setting up test');
+  console.log('[TEST] Setting up test');
 
   try {
     const testId = genId(TEST_ID);

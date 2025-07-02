@@ -56,7 +56,7 @@ export class ContainerService {
     const service = await gcpService.createService(request);
     const identityToken = await this.getIdentityToken(service.uri!);
 
-    console.log(`Service ${testId} deployed at ${service.uri}`);
+    console.log(`[Container] Service ${testId} deployed at ${service.uri}`);
     try {
       const response = await axios.get(`${service.uri}/`, {
         headers: {
@@ -64,7 +64,7 @@ export class ContainerService {
           'Content-Type': 'application/json'
         }
       });
-      console.log(`Health check successful for service ${testId}: ${response.data}`);
+      console.log(`[Container] Health check successful for service ${testId}: ${response.data}`);
     } catch (error) {
       console.error(`Health check failed for service ${testId}: ${(error as any).message}`);
     }
@@ -76,7 +76,7 @@ export class ContainerService {
           'Content-Type': 'application/json'
         }
       });
-      console.log(`Memwatch get successful for service ${testId}: ${response.data}`);
+      console.log(`[Container] Memwatch get successful for service ${testId}: ${response.data}`);
     } catch (error) {
       console.error(`Memwatch get failed for service ${testId}: ${(error as any).message}`);
     }
@@ -87,7 +87,7 @@ export class ContainerService {
   async destroyGame(serviceName: string) {
     try {
       await gcpService.deleteService(serviceName);
-      console.log(`Service ${serviceName} deleted successfully`);
+      console.log(`[Container] Service ${serviceName} deleted successfully`);
     } catch (error) {
       console.error(`Failed to delete service ${serviceName}: ${(error as any).message}`);
     }

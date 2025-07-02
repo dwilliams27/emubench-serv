@@ -22,6 +22,10 @@ app.use((req, res, next) => {
   }
 });
 
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
 // MCP
 app.get('/mcp', supabaseAuthMiddleware, mcpController.getMcpHandler);
 app.post('/mcp', supabaseAuthMiddleware, mcpController.postMcpHandler);

@@ -83,10 +83,10 @@ export async function supabaseAuthMiddleware(
             }
           };
 
-          console.log(`Connecting transport to MCP server...`);
+          console.log(`[AUTH] Connecting transport to MCP server...`);
           await mcpService.getServer().connect(transport);
           await sessionService.addMcpSession(req.emuSession, emuSessionId, testId, transport);
-          console.log(`Transport connected to MCP server successfully`);
+          console.log(`[AUTH] Transport connected to MCP server successfully`);
 
           req.mcpSession = sessionService.getMcpSession(emuSessionId);
         }
