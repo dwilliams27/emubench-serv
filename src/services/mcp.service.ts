@@ -31,6 +31,7 @@ export class McpService {
     if (!session) {
       throw new Error('No session found for ID: ' + context.sessionId);
     }
+    console.log(`[MCP] Got ${session[0].id} from ${context.sessionId}`);
 
     return session[0];
   }
@@ -101,6 +102,7 @@ export class McpService {
           console.warn('Issue fetching memwatches from input req.')
         }
 
+        console.log(`[MCP] Responding to input tool call for ${activeTest.id}: ${JSON.stringify(inputResponse)}`);
         return {
           content: [
             {

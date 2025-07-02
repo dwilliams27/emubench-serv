@@ -2,7 +2,7 @@ import { containerService } from '@/services/container.service';
 import { Request, Response } from 'express';
 
 export const postMcpHandler = async (req: Request, res: Response) => {
-  console.log(`[MCP] Request received: ${req.method} ${req.url}`, JSON.stringify({body: req.body}));
+  console.log(`[MCP] Request received: ${req.method} ${req.url} ${JSON.stringify(req.body)}`);
 
   const originalJson = res.json;
   res.json = function(body) {
@@ -30,7 +30,7 @@ export const postMcpHandler = async (req: Request, res: Response) => {
     }
 
     console.log(`[MCP] Handling request for session: ${emuSessionId}`);
-    console.log(`[MCP] Request body:`, JSON.stringify(req.body, null, 2));
+    console.log(`[MCP] Request body: ${JSON.stringify(req.body, null, 2)}`);
     
     console.log(`[MCP] Calling transport.handleRequest...`);
     const startTime = Date.now();

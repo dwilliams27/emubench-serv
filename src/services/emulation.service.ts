@@ -45,7 +45,7 @@ export class EmulationService {
       console.log(`[Emulation] Sent controller input for test ${activeTest.id}`);
       return response.data;
     } catch (error) {
-      console.error('Error sending controller input:', error);
+      console.error('[Emulation] Error sending controller input:', error);
       return null;
     }
   }
