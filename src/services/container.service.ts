@@ -93,8 +93,8 @@ export class ContainerService {
     }
   }
 
-  async runAgent(testId: string, mcpSessionId: string, authToken: string) {
-    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, authToken, mcpSessionId);
+  async runAgent(testId: string, authToken: string, googleToken: string, gameUrl: string) {
+    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, authToken, googleToken, gameUrl);
   }
 
   private async getIdentityToken(targetUrl: string): Promise<string> {

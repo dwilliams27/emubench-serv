@@ -1,6 +1,5 @@
 import { MemoryWatch } from "@/types/gamecube";
 import { protos } from "@google-cloud/run";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 
 export interface ContainerInstance {
   id: string;
@@ -31,7 +30,6 @@ export interface EmuAgentConfig {
   model: string;
   maxIterations: number;
   temperature: number;
-  mcpServerEndpoint: string;
   task: EmuTask;
 };
 
@@ -52,7 +50,6 @@ export interface EmuTestMemoryState {
 
 export interface ActiveTest {
   id: string;
-  mcpSessionId: string;
   emuConfig: EmuTestConfig;
   emuTestState: EmuTestState;
   emuTestMemoryState: EmuTestMemoryState;
@@ -62,7 +59,6 @@ export interface ActiveTest {
 
 export interface EmuSession {
   activeTests: Record<string, ActiveTest>;
-  mcpSessions: Record<string, StreamableHTTPServerTransport>;
 }
 
 export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions';

@@ -1,9 +1,8 @@
 import { containerService } from "@/services/container.service";
-import { emulationService } from "@/services/emulation.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest, EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/session";
-import { genId, MCP_SESSION_ID, TEST_ID } from "@/utils/id";
+import { genId, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
 export const setupTest = async (req: Request, res: Response) => {
@@ -13,7 +12,7 @@ export const setupTest = async (req: Request, res: Response) => {
     const testId = genId(TEST_ID);
     const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
     // TODO: Pull gameContext from DB eventually
-    const agentConfig: EmuAgentConfig = { ...req.body.agentConfig, mcpServerEndpoint: 'https://api.emubench.com/mcp' };
+    const agentConfig: EmuAgentConfig = req.body.agentConfig;
     const testState: EmuTestState = {
       state: 'booting',
     };
@@ -21,7 +20,6 @@ export const setupTest = async (req: Request, res: Response) => {
       contextMemWatchValues: {},
       endStateMemWatchValues: {}
     }
-    const mcpSessionId = genId(MCP_SESSION_ID);
 
     // Write config to bucket
     const writeSessionFolder = await testService.createTestSessionFolder(testId);
@@ -39,7 +37,6 @@ export const setupTest = async (req: Request, res: Response) => {
 
     const activeTest: ActiveTest = {
       id: testId,
-      mcpSessionId,
       emuConfig: testConfig,
       emuTestState: testState,
       emuTestMemoryState: testMemoryState
@@ -49,7 +46,8 @@ export const setupTest = async (req: Request, res: Response) => {
 
     // Deploy game and agent
     const gamePromise = containerService.deployGame(testId, testConfig);
-    const agentPromise = containerService.runAgent(testId, mcpSessionId, req.headers.authorization!.substring(7));
+    // TODO: Pass google token and game URL
+    const agentPromise = containerService.runAgent(testId, req.headers.authorization!.substring(7));
 
     const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
     

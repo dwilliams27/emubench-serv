@@ -262,7 +262,7 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
     template {
       service_account        = google_service_account.cloud_run_sa.email
       execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
-      
+
       containers {
         image = "gcr.io/${var.project_id}/emubench-agent:latest"
         
@@ -275,10 +275,15 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
           name  = "AUTH_TOKEN"
           value = "placeholder-auth-token"
         }
+
+        env {
+          name  = "GOOGLE_TOKEN"
+          value = "placeholder-google-token"
+        }
         
         env {
-          name  = "MCP_SESSION_ID"
-          value = "placeholder-session-id"
+          name  = "GAME_URL"
+          value = "placeholder-game-url"
         }
         
         resources {

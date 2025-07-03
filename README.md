@@ -1,8 +1,8 @@
 # 🛜 emubench-serv
 
-Exposes tools using MCP for directly interacting with Gamecube games in the Dolphin emulator.
+Main emubench API service. Orchestrates running LLM benchmarks against gamecube games.
 
-Use with [emubench-dolphin](https://github.com/dwilliams27/emubench-dolphin) and [emubench-ui](https://github.com/dwilliams27/emubench-ui)
+Used with [emubench-dolphin](https://github.com/dwilliams27/emubench-dolphin), [emubench-ui](https://github.com/dwilliams27/emubench-ui), and [emubench-agent](https://github.com/dwilliams27/emubench-agent).
 
-## Architecture
+## Architecture (WIP)
 <img src="public/basic_emubench_arch.svg" alt="arch diagram">

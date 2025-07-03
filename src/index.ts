@@ -1,7 +1,5 @@
 import express from 'express';
-import * as mcpController from '@/controllers/mcp';
 import * as testController from '@/controllers/test';
-import { mcpService } from '@/services/mcp.service';
 import { configDotenv } from 'dotenv';
 import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
 
@@ -26,11 +24,6 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// MCP
-app.get('/mcp', supabaseAuthMiddleware, mcpController.getMcpHandler);
-app.post('/mcp', supabaseAuthMiddleware, mcpController.postMcpHandler);
-app.delete('/mcp', supabaseAuthMiddleware, mcpController.deleteMcpHandler);
-
 // test-orx
 app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getEmuTestConfigs);
 app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getEmuTestState);
@@ -42,7 +35,5 @@ app.listen(PORT, () => {
 });
 
 process.on('SIGINT', async () => {
-  // TODO: Delete stuff
-  await mcpService.destroy();
   process.exit(0);
 });
