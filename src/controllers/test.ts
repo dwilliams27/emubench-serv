@@ -45,11 +45,13 @@ export const setupTest = async (req: Request, res: Response) => {
     req.emuSession.activeTests[testId] = activeTest;
 
     // Deploy game and agent
-    const gamePromise = containerService.deployGame(testId, testConfig);
-    // TODO: Pass google token and game URL
-    const agentPromise = containerService.runAgent(testId, req.headers.authorization!.substring(7));
+    const gameContainer =  await containerService.deployGame(testId, testConfig);
 
-    const [gameContainer, agentJob] = await Promise.all([gamePromise, agentPromise]);
+    if (!gameContainer.service.uri) {
+      throw new Error('Unable to find container URL');
+    }
+    
+    const agentJob = await containerService.runAgent(testId, req.headers.authorization!.substring(7), gameContainer.identityToken, gameContainer.service.uri);
     
     const { identityToken, service } = gameContainer;
 
