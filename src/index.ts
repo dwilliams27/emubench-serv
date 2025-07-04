@@ -28,6 +28,7 @@ app.get('/health', (req, res) => {
 app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getEmuTestConfigs);
 app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getEmuTestState);
 app.post('/test-orx/setup', supabaseAuthMiddleware, testController.setupTest);
+app.post('/test-orx/end', supabaseAuthMiddleware, testController.endTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

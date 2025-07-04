@@ -50,7 +50,7 @@ export const setupTest = async (req: Request, res: Response) => {
     if (!gameContainer.service.uri) {
       throw new Error('Unable to find container URL');
     }
-    
+
     const agentJob = await containerService.runAgent(testId, req.headers.authorization!.substring(7), gameContainer.identityToken, gameContainer.service.uri);
     
     const { identityToken, service } = gameContainer;
@@ -75,6 +75,21 @@ export const setupTest = async (req: Request, res: Response) => {
     console.error('Error setting up test:', JSON.stringify(error));
     res.status(500).send('Failed to set up test');
   }
+}
+
+export const endTest = async (req: Request, res: Response) => {
+  const testId = req.body.testId;
+  if (!testId || !req.emuSession.activeTests[testId]) {
+    res.status(400).send('Must pass valid testId');
+    return;
+  }
+  const containerName = req.emuSession.activeTests[testId].container?.name;
+  if (!containerName) {
+    res.status(400).send('Container not found for testId');
+    return;
+  }
+  await gcpService.deleteService(containerName);
+  res.status(200);
 }
 
 export const getEmuTestConfigs = async (req: Request, res: Response) => {
