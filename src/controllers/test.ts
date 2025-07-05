@@ -114,18 +114,23 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     const url = await gcpService.getSignedURL('emubench-sessions', `${testId}/ScreenShots/${screenshot}`);
     res([screenshot, url])
   }));
-  const signedUrls = await Promise.all(signedUrlsPromises);
+  const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
 
   // Current test state
   const currentTestState = await testService.getTestState(testId);
 
-  // TODO: memwatches (ensure emuTestMemoryState is hydrated from input tool response?)
+  // Logs
+  const agentLogs = await testService.getAgentLogs(testId);
 
-  // TODO: Pull in LLM messages
+  // TODO: memwatches (ensure emuTestMemoryState is hydrated from input tool response?)
 
   res.send({
     state: currentTestState,
     memoryState: activeTest.emuTestMemoryState,
-    screenshots: signedUrls
+    screenshots: signedUrls.reduce((acc: Record<string, string>, url) => {
+      acc[url[0]] = url[1];
+      return acc;
+    }, {}),
+    agentLogs,
   });
 }

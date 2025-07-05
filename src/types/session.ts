@@ -62,3 +62,13 @@ export interface EmuSession {
 }
 
 export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions';
+
+export interface LogItem {
+  text: string;
+  metadata: Record<string, string>;
+}
+
+export interface LogBlock {
+  title: string;
+  logs: LogItem[]
+}

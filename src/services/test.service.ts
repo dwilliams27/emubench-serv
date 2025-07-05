@@ -1,4 +1,4 @@
-import { EmuBootConfig, EmuTestState, SESSION_FUSE_PATH } from "@/types/session";
+import { EmuBootConfig, EmuTestState, LogBlock, SESSION_FUSE_PATH } from "@/types/session";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -74,6 +74,15 @@ export class TestService {
     const screenshotPath = path.join(`${SESSION_FUSE_PATH}/${testId}`, 'ScreenShots');
     const files = await readdir(screenshotPath);
     return files.sort();
+  }
+
+  async getAgentLogs(testId: string): Promise<LogBlock[]> {
+    const agentLogData = await readFile(
+      path.join(`${SESSION_FUSE_PATH}/${testId}`, 'agent_logs.json'), 
+      'utf8'
+    );
+    const agentLogs = agentLogData.split('\n').map((logBLock => JSON.parse(logBLock))) as LogBlock[];
+    return agentLogs;
   }
 }
 
