@@ -78,6 +78,7 @@ export const setupTest = async (req: Request, res: Response) => {
 }
 
 export const endTest = async (req: Request, res: Response) => {
+  console.log('[TEST] Ending test');
   const testId = req.body.testId;
   if (!testId || !req.emuSession.activeTests[testId]) {
     res.status(400).send('Must pass valid testId');
@@ -89,6 +90,7 @@ export const endTest = async (req: Request, res: Response) => {
     return;
   }
   await gcpService.deleteService(containerName);
+  console.log('[TEST] Test deleted');
   res.status(200);
 }
 
@@ -97,6 +99,7 @@ export const getEmuTestConfigs = async (req: Request, res: Response) => {
 }
 
 export const getEmuTestState = async (req: Request, res: Response) => {
+  console.log('[TEST] Getting test state');
   if (!req.params.testId) {
     res.status(400).send('Must specify testId');
     return;

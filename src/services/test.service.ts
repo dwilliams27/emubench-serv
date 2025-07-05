@@ -77,12 +77,17 @@ export class TestService {
   }
 
   async getAgentLogs(testId: string): Promise<LogBlock[]> {
-    const agentLogData = await readFile(
-      path.join(`${SESSION_FUSE_PATH}/${testId}`, 'agent_logs.json'), 
-      'utf8'
-    );
-    const agentLogs = agentLogData.split('\n').map((logBLock => JSON.parse(logBLock))) as LogBlock[];
-    return agentLogs;
+    try {
+      const agentLogData = await readFile(
+        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'agent_logs.txt'), 
+        'utf8'
+      );
+      const agentLogs = agentLogData.split('$$ENDLOG$$').filter(logBlock => logBlock.trim().length > 0).map((logBlock => JSON.parse(logBlock.trim()))) as LogBlock[];
+      return agentLogs;
+    } catch (error) {
+      console.log(`[Test] Error getting agent logs: ${JSON.stringify((error as any).message)}`)
+      return [];
+    }
   }
 }
 
