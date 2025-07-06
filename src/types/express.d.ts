@@ -13,7 +13,7 @@ declare global {
       user?: {
         id: string;
         email?: string;
-        provider: 'supabase';
+        provider: 'firebase';
       }
     }
   }

@@ -1,7 +1,7 @@
 import express from 'express';
 import * as testController from '@/controllers/test';
 import { configDotenv } from 'dotenv';
-import { supabaseAuthMiddleware } from '@/middleware/supabase-auth.middleware';
+import { firebaseAuthMiddleware } from '@/middleware/firebase-auth.middleware';
 
 configDotenv();
 
@@ -25,10 +25,10 @@ app.get('/health', (req, res) => {
 });
 
 // test-orx
-app.get('/test-orx/tests', supabaseAuthMiddleware, testController.getEmuTestConfigs);
-app.get('/test-orx/tests/:testId', supabaseAuthMiddleware, testController.getEmuTestState);
-app.post('/test-orx/setup', supabaseAuthMiddleware, testController.setupTest);
-app.post('/test-orx/end', supabaseAuthMiddleware, testController.endTest);
+app.get('/test-orx/tests', firebaseAuthMiddleware, testController.getEmuTestConfigs);
+app.get('/test-orx/tests/:testId', firebaseAuthMiddleware, testController.getEmuTestState);
+app.post('/test-orx/setup', firebaseAuthMiddleware, testController.setupTest);
+app.post('/test-orx/end', firebaseAuthMiddleware, testController.endTest);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {
