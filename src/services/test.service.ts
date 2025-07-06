@@ -16,33 +16,33 @@ export class TestService {
     return false;
   }
 
-  async getTestState(testId: string): Promise<EmuTestState | null> {
-    try {
-      const testStateData = await readFile(
-        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'), 
-        'utf8'
-      );
-      const testStateFromFile = JSON.parse(testStateData) as EmuTestState;
-      return testStateFromFile;
-    } catch (error) {
-      console.error('Error reading test_state.json:', error);
-    }
-    return null;
-  }
+  // async getTestState(testId: string): Promise<EmuTestState | null> {
+  //   try {
+  //     const testStateData = await readFile(
+  //       path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'), 
+  //       'utf8'
+  //     );
+  //     const testStateFromFile = JSON.parse(testStateData) as EmuTestState;
+  //     return testStateFromFile;
+  //   } catch (error) {
+  //     console.error('Error reading test_state.json:', error);
+  //   }
+  //   return null;
+  // }
 
-  async writeTestState(testId: string, testState: EmuTestState): Promise<boolean> {
-    try {
-      await writeFile(
-        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'),
-        JSON.stringify(testState, null, 2),
-        'utf8'
-      );
-      return true;
-    } catch (error) {
-      console.error('Error writing test_state.json:', error);
-    }
-    return false;
-  }
+  // async writeTestState(testId: string, testState: EmuTestState): Promise<boolean> {
+  //   try {
+  //     await writeFile(
+  //       path.join(`${SESSION_FUSE_PATH}/${testId}`, 'test_state.json'),
+  //       JSON.stringify(testState, null, 2),
+  //       'utf8'
+  //     );
+  //     return true;
+  //   } catch (error) {
+  //     console.error('Error writing test_state.json:', error);
+  //   }
+  //   return false;
+  // }
 
   async getBootConfig(testId: string): Promise<EmuBootConfig | null> {
     try {
@@ -79,6 +79,21 @@ export class TestService {
   }
 
   async getAgentLogs(testId: string): Promise<EmuLogBlock[]> {
+    console.log(`[Test] Fetching agent logs in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.AGENT_LOGS}`)
+    try {
+      const logs = await firebaseService.read({
+        collection: FirebaseCollection.SESSIONS,
+        subCollection: FirebaseSubCollection.AGENT_LOGS,
+        testId: testId
+      });
+      return logs as unknown as EmuLogBlock[];
+    } catch (error) {
+      console.log(`[Test] Error getting agent logs: ${JSON.stringify((error as any).message)}`)
+      return [];
+    }
+  }
+
+  async getTestState(testId: string): Promise<EmuLogBlock[]> {
     console.log(`[Test] Fetching agent logs in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.AGENT_LOGS}`)
     try {
       const logs = await firebaseService.read({

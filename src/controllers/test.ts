@@ -66,16 +66,6 @@ export const setupTest = async (req: Request, res: Response) => {
 
     activeTest.container = service;
     activeTest.googleToken = identityToken;
-
-    const currentTestState = await testService.getTestState(testId);
-    if (currentTestState?.state !== "emulator-ready") {
-      console.error('Emulator is not ready after deployment');
-      res.status(500).send('Emulator is not ready after deployment');
-      return;
-    }
-
-    testState.state = 'server-ready';
-    await testService.writeTestState(testId, testState);
     
     // TODO: Push to DB
 
