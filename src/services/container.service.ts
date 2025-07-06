@@ -1,5 +1,6 @@
 import { gcpService } from '@/services/gcp.service';
-import { EmuTestConfig, SESSION_FUSE_PATH } from '@/types/session';
+import { SESSION_FUSE_PATH } from '@/types/session';
+import { EmuTestConfig } from '@/types/shared';
 import { protos } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";

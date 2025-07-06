@@ -1,5 +1,7 @@
-import { EmuBootConfig, EmuTestState, LogBlock, SESSION_FUSE_PATH } from "@/types/session";
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
+import { FirebaseCollection, firebaseService, FirebaseSubCollection } from "@/services/firebase.service";
+import { SESSION_FUSE_PATH } from "@/types/session";
+import { EmuBootConfig, EmuTestState, EmuLogBlock } from "@/types/shared";
+import { mkdir, readdir, readFile, writeFile, utimes } from "fs/promises";
 import path from "path";
 
 export class TestService {
@@ -76,14 +78,15 @@ export class TestService {
     return files.sort();
   }
 
-  async getAgentLogs(testId: string): Promise<LogBlock[]> {
+  async getAgentLogs(testId: string): Promise<EmuLogBlock[]> {
+    console.log(`[Test] Fetching agent logs in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.AGENT_LOGS}`)
     try {
-      const agentLogData = await readFile(
-        path.join(`${SESSION_FUSE_PATH}/${testId}`, 'agent_logs.txt'), 
-        'utf8'
-      );
-      const agentLogs = agentLogData.split('$$ENDLOG$$').filter(logBlock => logBlock.trim().length > 0).map((logBlock => JSON.parse(logBlock.trim()))) as LogBlock[];
-      return agentLogs;
+      const logs = await firebaseService.read({
+        collection: FirebaseCollection.SESSIONS,
+        subCollection: FirebaseSubCollection.AGENT_LOGS,
+        testId: testId
+      });
+      return logs as unknown as EmuLogBlock[];
     } catch (error) {
       console.log(`[Test] Error getting agent logs: ${JSON.stringify((error as any).message)}`)
       return [];

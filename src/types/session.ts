@@ -1,4 +1,4 @@
-import { MemoryWatch } from "@/types/gamecube";
+import { EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/shared";
 import { protos } from "@google-cloud/run";
 
 export interface ContainerInstance {
@@ -6,46 +6,6 @@ export interface ContainerInstance {
   url: string;
   status: 'starting' | 'running' | 'stopped';
   createdAt: Date;
-}
-
-export interface EmuTestConfig {
-  id: string;
-  gameId: string;
-  platform: 'gamecube';
-  mode: 'turn-based' | 'real-time';
-  startStateFilename: string;
-  contextMemWatches: Record<string, MemoryWatch>;
-  endStateMemWatches: Record<string, MemoryWatch>;
-};
-
-export interface EmuTask {
-  name: string;
-  description: string;
-}
-
-export interface EmuAgentConfig {
-  systemPrompt: string;
-  gameContext: string;
-  llmProvider: 'openai' | 'anthropic' | 'google';
-  model: string;
-  maxIterations: number;
-  temperature: number;
-  task: EmuTask;
-};
-
-export interface EmuBootConfig {
-  testConfig: EmuTestConfig;
-  agentConfig: EmuAgentConfig;
-}
-
-// Read in from file
-export interface EmuTestState {
-  state: 'booting' | 'emulator-ready' | 'server-ready' | 'running' | 'finished';
-}
-
-export interface EmuTestMemoryState {
-  contextMemWatchValues: Record<string, string>;
-  endStateMemWatchValues: Record<string, string>;
 }
 
 export interface ActiveTest {
@@ -62,13 +22,3 @@ export interface EmuSession {
 }
 
 export const SESSION_FUSE_PATH = '/tmp/gcs/emubench-sessions';
-
-export interface LogItem {
-  text: string;
-  metadata: Record<string, string>;
-}
-
-export interface LogBlock {
-  title: string;
-  logs: LogItem[]
-}

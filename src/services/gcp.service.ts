@@ -92,6 +92,7 @@ export class GcpService {
       action: 'read',
       expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     });
+    this.signedUrlCache[`${bucketName}${filePath}`] = url;
     return url;
   }
 }

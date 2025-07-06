@@ -1,9 +1,12 @@
 import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
-import { ActiveTest, EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/session";
+import { ActiveTest } from "@/types/session";
+import { EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/shared";
 import { genId, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
+
+const DEBUG_MAX_ITERATIONS = 30;
 
 export const setupTest = async (req: Request, res: Response) => {
   console.log('[TEST] Setting up test');
@@ -13,6 +16,12 @@ export const setupTest = async (req: Request, res: Response) => {
     const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
     // TODO: Pull gameContext from DB eventually
     const agentConfig: EmuAgentConfig = req.body.agentConfig;
+
+    if (agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
+      res.status(400).send('Max iterations too large');
+      return;
+    }
+
     const testState: EmuTestState = {
       state: 'booting',
     };
@@ -91,7 +100,7 @@ export const endTest = async (req: Request, res: Response) => {
   }
   await gcpService.deleteService(containerName);
   console.log('[TEST] Test deleted');
-  res.status(200);
+  res.status(200).send();
 }
 
 export const getEmuTestConfigs = async (req: Request, res: Response) => {

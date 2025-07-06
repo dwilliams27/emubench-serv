@@ -153,7 +153,7 @@ resource "google_project_iam_member" "cloud_run_token_creator" {
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
-# Cloud Run service
+# serv
 resource "google_cloud_run_v2_service" "emubench_serv" {
   name                 = "emubench-serv"
   location             = "us-central1"
@@ -319,4 +319,28 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
   }
 
   depends_on = [google_service_account.cloud_run_sa]
+}
+
+resource "google_project_service" "firestore" {
+  project = var.project_id
+  service = "firestore.googleapis.com"
+  
+  disable_dependent_services = true
+}
+
+resource "google_firestore_database" "database" {
+  project     = var.project_id
+  name        = "(default)"
+  location_id = "nam5"
+  type        = "FIRESTORE_NATIVE"
+
+  depends_on = [google_project_service.firestore]
+}
+
+resource "google_project_iam_member" "app_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+  
+  depends_on = [google_project_service.firestore]
 }
