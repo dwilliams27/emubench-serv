@@ -99,6 +99,13 @@ resource "google_project_iam_member" "cloud_build_storage_object_admin" {
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
+# Firestore
+resource "google_project_iam_member" "cloud_run_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
 # Google Cloud Storage bucket for screenshots and session data
 resource "google_storage_bucket" "emubench_sessions" {
   name     = "emubench-sessions"

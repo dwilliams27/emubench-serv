@@ -2,7 +2,7 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuAgentConfig, EmuTestConfig, EmuTestMemoryState, EmuTestState } from "@/types/shared";
+import { EmuAgentConfig, EmuTestConfig } from "@/types/shared";
 import { genId, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
@@ -22,14 +22,6 @@ export const setupTest = async (req: Request, res: Response) => {
       return;
     }
 
-    const testState: EmuTestState = {
-      state: 'booting',
-    };
-    const testMemoryState: EmuTestMemoryState = {
-      contextMemWatchValues: {},
-      endStateMemWatchValues: {}
-    }
-
     // Write config to bucket
     const writeSessionFolder = await testService.createTestSessionFolder(testId);
     if (!writeSessionFolder) {
@@ -47,8 +39,6 @@ export const setupTest = async (req: Request, res: Response) => {
     const activeTest: ActiveTest = {
       id: testId,
       emuConfig: testConfig,
-      emuTestState: testState,
-      emuTestMemoryState: testMemoryState
     }
 
     req.emuSession.activeTests[testId] = activeTest;
@@ -118,17 +108,14 @@ export const getEmuTestState = async (req: Request, res: Response) => {
   }));
   const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
 
-  // Current test state
-  const currentTestState = await testService.getTestState(testId);
-
   // Logs
   const agentLogs = await testService.getAgentLogs(testId);
 
-  // TODO: memwatches (ensure emuTestMemoryState is hydrated from input tool response?)
+  // Test state
+  const testState = await testService.getTestState(testId);
 
   res.send({
-    state: currentTestState,
-    memoryState: activeTest.emuTestMemoryState,
+    testState: testState,
     screenshots: signedUrls.reduce((acc: Record<string, string>, url) => {
       acc[url[0]] = url[1];
       return acc;

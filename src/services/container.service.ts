@@ -24,7 +24,7 @@ export class ContainerService {
               { name: "DOLPHIN_EMU_USERPATH", value: `${SESSION_FUSE_PATH}/${testId}` },
               { name: "SAVE_STATE_FILE", value: testConfig.startStateFilename },
               { name: "MEMWATCHES", value: JSON.stringify({ contextMemWatches: testConfig.contextMemWatches || {}, endStateMemWatches: testConfig.endStateMemWatches || {} }) },
-              { name: "SESSION_ID", value: testId },
+              { name: "TEST_ID", value: testId },
               { name: "MODE", value: testConfig.mode },
             ],
             resources: {

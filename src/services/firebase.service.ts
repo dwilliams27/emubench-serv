@@ -53,18 +53,17 @@ export class FirebaseService {
   async read(options: {
     collection: string,
     subCollection: string,
+    file?: string,
     testId: string
   }) {
-    const result = await this.db.collection(options.collection)
-      .doc(options.testId)
-      .collection(options.subCollection)
-      .orderBy('createdAt', 'desc')
-      .get();
+    const collectionRef = this.db.collection(options.collection).doc(options.testId).collection(options.subCollection);
+    const ref = options.file ? collectionRef.doc(options.file) : collectionRef.orderBy('createdAt', 'desc');
+    const result = await ref.get();
 
-    const documentsWithId = result.docs.map(doc => ({
+    const documentsWithId = 'docs' in result ? result.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })) : result;
 
     return documentsWithId;
   }

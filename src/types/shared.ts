@@ -45,10 +45,7 @@ export interface EmuAgentConfig {
 }
 
 export interface EmuTestState {
-  state: 'booting' | 'emulator-ready' | 'server-ready' | 'running' | 'finished';
-}
-
-export interface EmuTestMemoryState {
+  status: 'booting' | 'emulator-ready' | 'running' | 'finished';
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
 }
