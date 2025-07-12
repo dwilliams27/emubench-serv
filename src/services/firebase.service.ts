@@ -8,12 +8,15 @@ export const FirebaseCollection = {
 export const FirebaseSubCollection = {
   AGENT_LOGS: 'AGENT_LOGS',
   STATE: 'STATE',
+  CONFIG: 'CONFIG',
   DEV_LOGS: 'DEV_LOGS'
 };
 
 export const FirebaseFile = {
   AGENT_STATE: 'AGENT_STATE',
-  TEST_STATE: 'TEST_STATE'
+  TEST_STATE: 'TEST_STATE',
+
+  BOOT_CONFIG: 'BOOT_CONFIG'
 }
 
 export class FirebaseService {
@@ -42,7 +45,7 @@ export class FirebaseService {
       const collectionRef = this.db.collection(options.collection).doc(options.testId).collection(options.subCollection);
       const docRef = options.file ? collectionRef.doc(options.file) : collectionRef.doc();
       batch.set(docRef, {
-        item,
+        ...item,
         createdAt: FieldValue.serverTimestamp()
       });
     });
@@ -56,6 +59,7 @@ export class FirebaseService {
     file?: string,
     testId: string
   }) {
+    console.log(`[Firebase] Reading from ${options.collection}/${options.testId}/${options.subCollection}${options.file ? '/' + options.file : ''}`);
     const collectionRef = this.db.collection(options.collection).doc(options.testId).collection(options.subCollection);
     const ref = options.file ? collectionRef.doc(options.file) : collectionRef.orderBy('createdAt', 'desc');
     const result = await ref.get();
@@ -63,8 +67,12 @@ export class FirebaseService {
     const documentsWithId = 'docs' in result ? result.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    })) : result;
+    })) : [{
+      id: result.id,
+      ...result.data()
+    }];
 
+    console.log(`[Firebase] Got document(s): ${JSON.stringify(documentsWithId)}`)
     return documentsWithId;
   }
 }

@@ -32,17 +32,6 @@ export class ContainerService {
                 cpu: '2',
                 memory: '4Gi'
               }
-            },
-            volumeMounts: [{
-              name: `session-mount`,
-              mountPath: SESSION_FUSE_PATH,
-            }]
-          }],
-          volumes: [{
-            name: 'session-mount',
-            gcs: {
-              bucket: 'emubench-sessions',
-              readOnly: false
             }
           }],
           scaling: {
@@ -95,7 +84,7 @@ export class ContainerService {
   }
 
   async runAgent(testId: string, authToken: string, googleToken: string, gameUrl: string) {
-    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, authToken, googleToken, gameUrl);
+    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, testId, authToken, googleToken, gameUrl);
   }
 
   private async getIdentityToken(targetUrl: string): Promise<string> {

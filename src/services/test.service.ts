@@ -32,11 +32,14 @@ export class TestService {
 
   async writeBootConfig(bootConfig: EmuBootConfig): Promise<boolean> {
     try {
-      await writeFile(
-        path.join(`${SESSION_FUSE_PATH}/${bootConfig.testConfig.id}`, 'test_config.json'),
-        JSON.stringify(bootConfig, null, 2),
-        'utf8'
-      );
+      await firebaseService.write({
+        testId: bootConfig.testConfig.id,
+        collection: FirebaseCollection.SESSIONS,
+        subCollection: FirebaseSubCollection.CONFIG,
+        file: FirebaseFile.BOOT_CONFIG,
+        payload: [bootConfig]
+      });
+
       return true;
     } catch (error) {
       console.error('Error writing test_config.json:', error);
