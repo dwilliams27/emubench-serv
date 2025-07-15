@@ -32,6 +32,17 @@ export class ContainerService {
                 cpu: '2',
                 memory: '4Gi'
               }
+            },
+            volumeMounts: [{
+              name: `session-mount`,
+              mountPath: SESSION_FUSE_PATH,
+            }]
+          }],
+          volumes: [{
+            name: 'session-mount',
+            gcs: {
+              bucket: 'emubench-sessions',
+              readOnly: false
             }
           }],
           scaling: {
