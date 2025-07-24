@@ -79,7 +79,8 @@ export const endTest = async (req: Request, res: Response) => {
     return;
   }
   await gcpService.deleteService(containerName);
-  console.log('[TEST] Test deleted');
+  delete req.emuSession.activeTests[testId].container;
+  console.log(`[TEST] Test ${testId} deleted`);
   res.status(200).send();
 }
 
@@ -121,5 +122,6 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       return acc;
     }, {}),
     agentLogs,
+    finished: !!activeTest.container
   });
 }

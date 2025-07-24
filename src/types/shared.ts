@@ -59,9 +59,10 @@ export interface EmuTestState {
 }
 
 export interface EmuActiveTestReponse {
-  testState: EmuLogBlock[],
-  screenshots: Record<string, string>,
-  agentLogs: EmuLogBlock[],
+  testState: EmuLogBlock[];
+  screenshots: Record<string, string>;
+  agentLogs: EmuLogBlock[];
+  finished: boolean;
 }
 
 export interface EmuTurn {
