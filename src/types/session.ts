@@ -11,6 +11,7 @@ export interface ContainerInstance {
 export interface ActiveTest {
   id: string;
   emuConfig: EmuTestConfig;
+  status: 'starting' | 'running' | 'finished' | 'error';
   container?: protos.google.cloud.run.v2.IService;
   googleToken?: string;
 }

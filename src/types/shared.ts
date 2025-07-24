@@ -62,7 +62,7 @@ export interface EmuActiveTestReponse {
   testState: EmuLogBlock[];
   screenshots: Record<string, string>;
   agentLogs: EmuLogBlock[];
-  finished: boolean;
+  status: 'starting' | 'running' | 'finished' | 'error';
 }
 
 export interface EmuTurn {

@@ -39,23 +39,13 @@ export const setupTest = async (req: Request, res: Response) => {
     const activeTest: ActiveTest = {
       id: testId,
       emuConfig: testConfig,
+      status: 'starting'
     }
 
     req.emuSession.activeTests[testId] = activeTest;
 
-    // Deploy game and agent
-    const gameContainer =  await containerService.deployGame(testId, testConfig);
-
-    if (!gameContainer.service.uri) {
-      throw new Error('Unable to find container URL');
-    }
-
-    const agentJob = await containerService.runAgent(testId, req.headers.authorization!.substring(7), gameContainer.identityToken, gameContainer.service.uri);
-    
-    const { identityToken, service } = gameContainer;
-
-    activeTest.container = service;
-    activeTest.googleToken = identityToken;
+    // Deploy game and agent in background
+    asyncTestSetup(activeTest, req.headers.authorization!.substring(7));
     
     // TODO: Push to DB
 
@@ -63,6 +53,27 @@ export const setupTest = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error setting up test:', JSON.stringify(error));
     res.status(500).send('Failed to set up test');
+  }
+}
+
+async function asyncTestSetup(activeTest: ActiveTest, authToken: string) {
+  try {
+    const gameContainer =  await containerService.deployGame(activeTest.id, activeTest.emuConfig);
+
+    if (!gameContainer.service.uri) {
+      throw new Error('Unable to find container URL');
+    }
+
+    const agentJob = await containerService.runAgent(activeTest.id, authToken, gameContainer.identityToken, gameContainer.service.uri);
+    
+    const { identityToken, service } = gameContainer;
+
+    activeTest.container = service;
+    activeTest.googleToken = identityToken;
+    activeTest.status = 'running';
+  } catch (error) {
+    console.error(`[TEST] Error setting up test ${activeTest.id}`, error);
+    activeTest.status = 'error';
   }
 }
 
@@ -79,7 +90,7 @@ export const endTest = async (req: Request, res: Response) => {
     return;
   }
   await gcpService.deleteService(containerName);
-  delete req.emuSession.activeTests[testId].container;
+  req.emuSession.activeTests[testId].status = 'finished';
   console.log(`[TEST] Test ${testId} deleted`);
   res.status(200).send();
 }
@@ -100,6 +111,16 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     return;
   }
   const testId = activeTest.emuConfig.id;
+
+  if (activeTest.status === 'starting') {
+    res.send({
+      testState: [],
+      screenshots: {},
+      agentLogs: [],
+      status: activeTest.status
+    });
+    return;
+  }
 
   // Screenshots
   const screenshots = await testService.getScreenshots(testId);
@@ -122,6 +143,6 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       return acc;
     }, {}),
     agentLogs,
-    finished: !!activeTest.container
+    status: activeTest.status
   });
 }
