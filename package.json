@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json --resolve-full-paths",
     "start": "node dist/index.js",
     "debug-mcp": "npx @modelcontextprotocol/inspector ./dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typesync": "./scripts/typesync.sh"
   },
   "keywords": [],
   "author": "",

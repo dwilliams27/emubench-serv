@@ -58,11 +58,17 @@ export interface EmuTestState {
   endStateMemWatchValues: Record<string, string>;
 }
 
+export interface EmuSharedTestState {
+  emulatorUri?: string;
+  exchangeToken?: string;
+}
+
 export interface EmuActiveTestReponse {
-  testState: EmuLogBlock[];
+  testState: EmuTestState;
   screenshots: Record<string, string>;
   agentLogs: EmuLogBlock[];
-  status: 'starting' | 'running' | 'finished' | 'error';
+  emulatorStatus: 'starting' | 'running' | 'finished' | 'error';
+  agentStatus: 'starting' | 'running' | 'finished' | 'error';
 }
 
 export interface EmuTurn {

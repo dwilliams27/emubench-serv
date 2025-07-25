@@ -94,8 +94,8 @@ export class ContainerService {
     }
   }
 
-  async runAgent(testId: string, authToken: string, googleToken: string, gameUrl: string) {
-    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, testId, authToken, googleToken, gameUrl);
+  async runAgent(testId: string, authToken: string) {
+    await gcpService.runJob(`${SESSION_FUSE_PATH}/${testId}`, testId, authToken);
   }
 
   private async getIdentityToken(targetUrl: string): Promise<string> {

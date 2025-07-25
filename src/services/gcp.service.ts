@@ -27,7 +27,7 @@ export class GcpService {
     await operation.promise();
   }
 
-  async runJob(testPath: string, testId: string, authToken: string, googleToken: string, gameUrl: string): Promise<boolean> {
+  async runJob(testPath: string, testId: string, authToken: string): Promise<boolean> {
     await this.jobClient.runJob({
       name: `projects/${process.env.PROJECT_ID}/locations/us-central1/jobs/emubench-agent-job`,
       overrides: {
@@ -44,14 +44,6 @@ export class GcpService {
             {
               name: 'AUTH_TOKEN',
               value: authToken
-            },
-            {
-              name: 'GOOGLE_TOKEN',
-              value: googleToken
-            },
-            {
-              name: 'GAME_URL',
-              value: gameUrl
             },
             {
               name: 'OPENAI_API_KEY',

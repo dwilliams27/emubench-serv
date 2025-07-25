@@ -15,6 +15,7 @@ export const FirebaseSubCollection = {
 export const FirebaseFile = {
   AGENT_STATE: 'AGENT_STATE',
   TEST_STATE: 'TEST_STATE',
+  SHARED_STATE: 'SHARED_STATE',
 
   BOOT_CONFIG: 'BOOT_CONFIG'
 }

@@ -29,6 +29,8 @@ app.get('/test-orx/tests', firebaseAuthMiddleware, testController.getEmuTestConf
 app.get('/test-orx/tests/:testId', firebaseAuthMiddleware, testController.getEmuTestState);
 app.post('/test-orx/setup', firebaseAuthMiddleware, testController.setupTest);
 app.post('/test-orx/end', firebaseAuthMiddleware, testController.endTest);
+// For agent
+app.post('/test-orx/tests/:testId/token-exchange', firebaseAuthMiddleware, testController.attemptTokenExchange);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

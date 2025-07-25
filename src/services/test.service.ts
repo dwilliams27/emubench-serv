@@ -1,6 +1,6 @@
 import { FirebaseCollection, FirebaseFile, firebaseService, FirebaseSubCollection } from "@/services/firebase.service";
 import { SESSION_FUSE_PATH } from "@/types/session";
-import { EmuBootConfig, EmuLogBlock } from "@/types/shared";
+import { EmuBootConfig, EmuLogBlock, EmuSharedTestState, EmuTestState } from "@/types/shared";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -25,7 +25,7 @@ export class TestService {
       const bootConfig = JSON.parse(testConfigData) as EmuBootConfig;
       return bootConfig;
     } catch (error) {
-      console.error('Error reading test_config.json:', error);
+      console.error('Error reading BOOT_CONFIG', error);
     }
     return null;
   }
@@ -42,7 +42,24 @@ export class TestService {
 
       return true;
     } catch (error) {
-      console.error('Error writing test_config.json:', error);
+      console.error('Error writing BOOT_CONFIG', error);
+    }
+    return false;
+  }
+
+  async writeSharedTestState(testId: string, sharedTestState: EmuSharedTestState): Promise<boolean> {
+    try {
+      await firebaseService.write({
+        testId,
+        collection: FirebaseCollection.SESSIONS,
+        subCollection: FirebaseSubCollection.CONFIG,
+        file: FirebaseFile.SHARED_STATE,
+        payload: [sharedTestState]
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error writing SHARED_STATE', error);
     }
     return false;
   }
@@ -68,19 +85,19 @@ export class TestService {
     }
   }
 
-  async getTestState(testId: string): Promise<EmuLogBlock[]> {
+  async getTestState(testId: string): Promise<EmuTestState | null> {
     console.log(`[Test] Fetching test state in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.STATE}`)
     try {
-      const logs = await firebaseService.read({
+      const testState = await firebaseService.read({
         collection: FirebaseCollection.SESSIONS,
         subCollection: FirebaseSubCollection.STATE,
         file: FirebaseFile.TEST_STATE,
         testId: testId
       });
-      return logs as unknown as EmuLogBlock[];
+      return testState as unknown as EmuTestState;
     } catch (error) {
-      console.log(`[Test] Error getting test state: ${JSON.stringify((error as any).message)}`)
-      return [];
+      console.log(`[Test] Error getting TEST_STATE: ${JSON.stringify((error as any).message)}`)
+      return null;
     }
   }
 }
