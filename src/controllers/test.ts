@@ -1,9 +1,8 @@
 import { containerService } from "@/services/container.service";
-import { FirebaseCollection, FirebaseFile, firebaseService, FirebaseSubCollection } from "@/services/firebase.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuAgentConfig, EmuTestConfig } from "@/types/shared";
+import { EmuActiveTestReponse, EmuAgentConfig, EmuTestConfig } from "@/shared/types";
 import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/utils/id";
 import { Request, Response } from "express";
 
@@ -161,7 +160,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
 
   let screenshots = {};
 
-  if (activeTest.emulatorStatus === 'running' && activeTest.agentStatus === 'running') {
+  if (activeTest.emulatorStatus === 'running' && activeTest.agentStatus === 'running' || (activeTest.emulatorStatus === 'finished' && activeTest.agentStatus === 'finished')) {
     const testScreenshots = await testService.getScreenshots(testId);
     const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
       const url = await gcpService.getSignedURL('emubench-sessions', `${testId}/ScreenShots/${screenshot}`);

@@ -1,6 +1,6 @@
 import { FirebaseCollection, FirebaseFile, firebaseService, FirebaseSubCollection } from "@/services/firebase.service";
 import { SESSION_FUSE_PATH } from "@/types/session";
-import { EmuBootConfig, EmuLogBlock, EmuSharedTestState, EmuTestState } from "@/types/shared";
+import { EmuBootConfig, EmuLogBlock, EmuSharedTestState, EmuTestState } from "@/shared/types";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 
@@ -49,10 +49,11 @@ export class TestService {
 
   async writeSharedTestState(testId: string, sharedTestState: EmuSharedTestState): Promise<boolean> {
     try {
+      console.log(`[Test] Writing shared state for ${testId}...`)
       await firebaseService.write({
         testId,
         collection: FirebaseCollection.SESSIONS,
-        subCollection: FirebaseSubCollection.CONFIG,
+        subCollection: FirebaseSubCollection.STATE,
         file: FirebaseFile.SHARED_STATE,
         payload: [sharedTestState]
       });

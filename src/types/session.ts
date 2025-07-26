@@ -1,4 +1,4 @@
-import { EmuTestConfig } from "@/types/shared";
+import { EmuTestConfig } from "@/shared/types";
 import { protos } from "@google-cloud/run";
 
 export interface ContainerInstance {
