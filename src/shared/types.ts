@@ -80,7 +80,7 @@ export interface EmuLlmMessageContentItem {
   type: 'text' | 'image';
   text?: string;
   // @ts-ignore
-  image?: NonSharedBuffer;
+  image?: string;
 }
 
 export const EmuLogNamespace = {

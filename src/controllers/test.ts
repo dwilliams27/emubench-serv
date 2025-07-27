@@ -122,6 +122,21 @@ export const attemptTokenExchange = async (req: Request, res: Response) => {
   res.send({ token: activeTest.googleToken });
 }
 
+export const getScreenshots = async (req: Request, res: Response) => {
+  console.log('[TEST] Getting screenshots');
+  if (!req.params.testId) {
+    res.status(400).send('Must specify testId');
+    return;
+  }
+  const activeTest = req.emuSession.activeTests[req.params.testId];
+  if (!activeTest) {
+    res.status(400).send(`No active test found for id ${req.params.testId}`);
+    return;
+  }
+  const screenshots = await getScreenshotsFromTest(activeTest);
+  res.send({ screenshots });
+}
+
 export const endTest = async (req: Request, res: Response) => {
   console.log('[TEST] Ending test');
   const testId = req.body.testId;
@@ -145,6 +160,24 @@ export const getEmuTestConfigs = async (req: Request, res: Response) => {
   // TODO: Fetch from DB
 }
 
+const getScreenshotsFromTest = async (activeTest: ActiveTest): Promise<Record<string, string>> => {
+  let screenshots = {};
+  if (activeTest.emulatorStatus === 'running' && activeTest.agentStatus === 'running' || (activeTest.emulatorStatus === 'finished' && activeTest.agentStatus === 'finished')) {
+    const testScreenshots = await testService.getScreenshots(activeTest.id);
+    const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
+      const url = await gcpService.getSignedURL('emubench-sessions', `${activeTest.id}/ScreenShots/${screenshot}`);
+      res([screenshot, url])
+    }));
+    const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
+
+    screenshots = signedUrls.reduce((acc: Record<string, string>, url) => {
+      acc[url[0]] = url[1];
+      return acc;
+    }, {});
+  }
+  return screenshots;
+}
+
 export const getEmuTestState = async (req: Request, res: Response) => {
   console.log('[TEST] Getting test state');
   if (!req.params.testId) {
@@ -158,21 +191,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
   }
   const testId = activeTest.emuConfig.id;
 
-  let screenshots = {};
-
-  if (activeTest.emulatorStatus === 'running' && activeTest.agentStatus === 'running' || (activeTest.emulatorStatus === 'finished' && activeTest.agentStatus === 'finished')) {
-    const testScreenshots = await testService.getScreenshots(testId);
-    const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
-      const url = await gcpService.getSignedURL('emubench-sessions', `${testId}/ScreenShots/${screenshot}`);
-      res([screenshot, url])
-    }));
-    const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
-
-    screenshots = signedUrls.reduce((acc: Record<string, string>, url) => {
-      acc[url[0]] = url[1];
-      return acc;
-    }, {});
-  }
+  const screenshots = await getScreenshotsFromTest(activeTest);
 
   // Logs
   const agentLogs = await testService.getAgentLogs(testId);

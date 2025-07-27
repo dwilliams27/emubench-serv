@@ -87,6 +87,24 @@ describe("EmuConditionInput", () => {
     expect(emuEvaluateCondition(condition)).toBe(true);
   });
 
+  it("Uint(FFFFFFFF) === 4294967295", () => {
+    const condition: EmuCondition = {
+      inputs: {
+        maxUint: {
+          type: "uint",
+          pointerDepth: 0,
+          rawValue: "FFFFFFFF",
+        },
+      },
+      logic: {
+        lhs: { inputName: "maxUint" },
+        rhs: 4294967295,
+        operation: emuEqualsOperation(),
+      }
+    }
+    expect(emuEvaluateCondition(condition)).toBe(true);
+  });
+
   it("Chars(475A4C453031) === GZLE01", () => {
     const condition: EmuCondition = {
       inputs: {

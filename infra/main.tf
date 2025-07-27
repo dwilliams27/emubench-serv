@@ -302,22 +302,9 @@ resource "google_cloud_run_v2_job" "emubench_agent_job" {
         
         resources {
           limits = {
-            cpu    = "2"
-            memory = "4Gi"
+            cpu    = "1"
+            memory = "512Mi"
           }
-        }
-        
-        volume_mounts {
-          name       = "session-mount"
-          mount_path = "/tmp/gcs/emubench-sessions"
-        }
-      }
-      
-      volumes {
-        name = "session-mount"
-        gcs {
-          bucket    = google_storage_bucket.emubench_sessions.name
-          read_only = false
         }
       }
 
