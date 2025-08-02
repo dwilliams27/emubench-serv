@@ -1,5 +1,5 @@
 import { emuEvaluateCondition } from '@/shared/conditions/evaluate';
-import { emuAddOperation, emuEqualsOperation, emuLessThanOperation, emuSquareOperation } from '@/shared/conditions/operations';
+import { emuAddOperationFactory, emuEqualsOperationFactory, emuLessThanOperationFactory, emuSquareOperationFactory } from '@/shared/conditions/operations';
 import type { EmuCondition } from '@/shared/conditions/types';
 import { describe, it, expect } from 'vitest';
 
@@ -9,19 +9,17 @@ describe("EmuConditionInput", () => {
       inputs: {
         a: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000001",
         },
         b: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000001",
         }
       },
       logic: {
         lhs: { inputName: "a" },
         rhs: { inputName: "b" },
-        operation: emuAddOperation(),
+        operation: emuAddOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(2);
@@ -32,12 +30,10 @@ describe("EmuConditionInput", () => {
       inputs: {
         one: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000001",
         },
         two: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000002",
         }
       },
@@ -45,14 +41,14 @@ describe("EmuConditionInput", () => {
         lhs: {
           lhs: { inputName: "one" },
           rhs: { inputName: "one" },
-          operation: emuAddOperation(),
+          operation: emuAddOperationFactory(),
         },
         rhs: {
           lhs: { inputName: "two" },
           rhs: { inputName: "two" },
-          operation: emuAddOperation(),
+          operation: emuAddOperationFactory(),
         },
-        operation: emuLessThanOperation(),
+        operation: emuLessThanOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);
@@ -63,25 +59,23 @@ describe("EmuConditionInput", () => {
       inputs: {
         five: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000005",
         },
         six: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "00000006",
         }
       },
       logic: {
         lhs: {
           lhs: { inputName: "five" },
-          operation: emuSquareOperation(),
+          operation: emuSquareOperationFactory(),
         },
         rhs: {
           lhs: { inputName: "six" },
-          operation: emuSquareOperation(),
+          operation: emuSquareOperationFactory(),
         },
-        operation: emuLessThanOperation(),
+        operation: emuLessThanOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);
@@ -92,14 +86,13 @@ describe("EmuConditionInput", () => {
       inputs: {
         maxUint: {
           type: "uint",
-          pointerDepth: 0,
           rawValue: "FFFFFFFF",
         },
       },
       logic: {
         lhs: { inputName: "maxUint" },
         rhs: 4294967295,
-        operation: emuEqualsOperation(),
+        operation: emuEqualsOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);
@@ -110,14 +103,13 @@ describe("EmuConditionInput", () => {
       inputs: {
         GAME_ID: {
           type: "chars",
-          pointerDepth: 0,
           rawValue: "475A4C453031",
         },
       },
       logic: {
         lhs: { inputName: "GAME_ID" },
         rhs: "GZLE01",
-        operation: emuEqualsOperation(),
+        operation: emuEqualsOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);
@@ -128,14 +120,13 @@ describe("EmuConditionInput", () => {
       inputs: {
         FLOAT: {
           type: "float",
-          pointerDepth: 0,
           rawValue: "BF800000",
         },
       },
       logic: {
         lhs: { inputName: "FLOAT" },
         rhs: -1,
-        operation: emuEqualsOperation(),
+        operation: emuEqualsOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);
@@ -146,19 +137,17 @@ describe("EmuConditionInput", () => {
       inputs: {
         FLOAT: {
           type: "float",
-          pointerDepth: 0,
           rawValue: "BF800000",
         },
         INT: {
           type: "int",
-          pointerDepth: 0,
           rawValue: "FFFFFFFF",
         }
       },
       logic: {
         lhs: { inputName: "FLOAT" },
         rhs: { inputName: "INT" },
-        operation: emuEqualsOperation(),
+        operation: emuEqualsOperationFactory(),
       }
     }
     expect(emuEvaluateCondition(condition)).toBe(true);

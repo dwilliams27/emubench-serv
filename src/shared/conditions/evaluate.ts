@@ -44,10 +44,6 @@ export function emuParseAndPopulateConditionInput(input: EmuConditionInput): Emu
   if (input.parsedValue !== undefined) {
     return input.parsedValue;
   }
-  if (input.pointerDepth) {
-    // TODO: Pre-parse and fill?
-    throw new Error(`Pointer depth not supported: ${input.pointerDepth}`);
-  }
   switch (input.type) {
     case 'int': {
       return hexToInt(input.rawValue);

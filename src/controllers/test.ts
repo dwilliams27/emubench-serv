@@ -3,7 +3,7 @@ import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
 import { EmuActiveTestReponse, EmuAgentConfig, EmuTestConfig } from "@/shared/types";
-import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/utils/id";
+import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 
 const DEBUG_MAX_ITERATIONS = 30;
