@@ -5,12 +5,12 @@ import { EMU_OPERATION_ID, genId } from "@/shared/utils/id";
 export const emuAddOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '+',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for + operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for + operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'number' && typeof rhsResult === 'number') {
       return lhsResult + rhsResult;
     }
@@ -24,12 +24,12 @@ export const emuAddOperationFactory: () => EmuConditionOperation = () => ({
 export const emuMultiplyOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '*',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for * operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for * operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'number' && typeof rhsResult === 'number') {
       return lhsResult * rhsResult;
     }
@@ -40,12 +40,12 @@ export const emuMultiplyOperationFactory: () => EmuConditionOperation = () => ({
 export const emuEqualsOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '==',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for == operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for == operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     return lhsResult === rhsResult;
   }
 });
@@ -53,12 +53,12 @@ export const emuEqualsOperationFactory: () => EmuConditionOperation = () => ({
 export const emuAndOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '&&',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for && operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for && operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'boolean' && typeof rhsResult === 'boolean') {
       return lhsResult && rhsResult;
     }
@@ -69,12 +69,12 @@ export const emuAndOperationFactory: () => EmuConditionOperation = () => ({
 export const emuOrOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '||',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for || operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for || operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'boolean' && typeof rhsResult === 'boolean') {
       return lhsResult || rhsResult;
     }
@@ -85,12 +85,12 @@ export const emuOrOperationFactory: () => EmuConditionOperation = () => ({
 export const emuGreaterThanOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '>',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for > operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for > operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'number' && typeof rhsResult === 'number') {
       return lhsResult > rhsResult;
     }
@@ -101,12 +101,12 @@ export const emuGreaterThanOperationFactory: () => EmuConditionOperation = () =>
 export const emuLessThanOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '<',
-  func: (inputs, lhs, rhs) => {
-    if (rhs === undefined) {
-      throw new Error('Right-hand side operand is required for < operation');
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for < operation');
     }
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
-    const rhsResult = emuEvaluateOperand(inputs, rhs);
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'number' && typeof rhsResult === 'number') {
       return lhsResult < rhsResult;
     }
@@ -117,8 +117,11 @@ export const emuLessThanOperationFactory: () => EmuConditionOperation = () => ({
 export const emuNotOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '!',
-  func: (inputs, lhs, _) => {
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
+  func: (inputs, operands) => {
+    if (operands.rhs === undefined) {
+      throw new Error('Right operand required for ! operation');
+    }
+    const lhsResult = emuEvaluateOperand(inputs, operands.rhs);
     if (typeof lhsResult === 'boolean') {
       return !lhsResult;
     }
@@ -129,8 +132,11 @@ export const emuNotOperationFactory: () => EmuConditionOperation = () => ({
 export const emuSquareOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '^2',
-  func: (inputs, lhs, _) => {
-    const lhsResult = emuEvaluateOperand(inputs, lhs);
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined) {
+      throw new Error('Left operand required for ^2 operation');
+    }
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
     if (typeof lhsResult === 'number') {
       return lhsResult * lhsResult;
     }
