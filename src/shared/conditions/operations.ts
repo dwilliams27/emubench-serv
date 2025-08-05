@@ -5,6 +5,8 @@ import { EMU_OPERATION_ID, genId } from "@/shared/utils/id";
 export const emuAddOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '+',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for + operation');
@@ -24,6 +26,8 @@ export const emuAddOperationFactory: () => EmuConditionOperation = () => ({
 export const emuMultiplyOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '*',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for * operation');
@@ -40,6 +44,8 @@ export const emuMultiplyOperationFactory: () => EmuConditionOperation = () => ({
 export const emuEqualsOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '==',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for == operation');
@@ -53,6 +59,8 @@ export const emuEqualsOperationFactory: () => EmuConditionOperation = () => ({
 export const emuAndOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '&&',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for && operation');
@@ -69,6 +77,8 @@ export const emuAndOperationFactory: () => EmuConditionOperation = () => ({
 export const emuOrOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '||',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for || operation');
@@ -85,6 +95,8 @@ export const emuOrOperationFactory: () => EmuConditionOperation = () => ({
 export const emuGreaterThanOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '>',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for > operation');
@@ -101,6 +113,8 @@ export const emuGreaterThanOperationFactory: () => EmuConditionOperation = () =>
 export const emuLessThanOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '<',
+  hasLeftOperand: true,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for < operation');
@@ -117,6 +131,8 @@ export const emuLessThanOperationFactory: () => EmuConditionOperation = () => ({
 export const emuNotOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '!',
+  hasLeftOperand: false,
+  hasRightOperand: true,
   func: (inputs, operands) => {
     if (operands.rhs === undefined) {
       throw new Error('Right operand required for ! operation');
@@ -132,6 +148,8 @@ export const emuNotOperationFactory: () => EmuConditionOperation = () => ({
 export const emuSquareOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '^2',
+  hasLeftOperand: true,
+  hasRightOperand: false,
   func: (inputs, operands) => {
     if (operands.lhs === undefined) {
       throw new Error('Left operand required for ^2 operation');

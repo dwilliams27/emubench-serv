@@ -18,6 +18,10 @@ export interface EmuConditionPart {
   operation: EmuConditionOperation;
 }
 
+export interface EmuConditionParentheses {
+  open: boolean;
+}
+
 export type EmuConditionInputSet = Record<string, EmuConditionInput>;
 export type EmuConditionPrimitiveResult = string | number | boolean;
 export type EmuConditionLookupValue = { inputName: string, value?: EmuConditionPrimitiveResult };
@@ -27,5 +31,23 @@ export type EmuConditionOperationFunction = (inputs: EmuConditionInputSet, opera
 export interface EmuConditionOperation {
   id: string;
   name: string;
+  hasLeftOperand?: boolean;
+  hasRightOperand?: boolean;
   func: EmuConditionOperationFunction;
+}
+
+export interface EmuLinkedExpressionPart {
+  prev?: EmuLinkedExpressionPart;
+  next?: EmuLinkedExpressionPart;
+  value: EmuConditionOperand | EmuConditionParentheses;
+}
+
+export interface EmuRawExpressionPart {
+  type: 'primitive' | 'input' | 'operation' | 'parentheses';
+  primitiveValue?: string | number | boolean;
+  input?: EmuConditionInput;
+  operation?: EmuConditionOperation;
+  parentheses?: {
+    open: boolean;
+  };
 }
