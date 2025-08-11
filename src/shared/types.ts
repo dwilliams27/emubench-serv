@@ -1,3 +1,5 @@
+import { EmuCondition } from "@/shared/conditions/types";
+
 export interface EmuLogItem {
   text: string;
   metadata: {
@@ -19,6 +21,7 @@ export interface EmuLogBlock {
 export interface EmuBootConfig {
   agentConfig: EmuAgentConfig;
   testConfig: EmuTestConfig;
+  goalConfig: EmuGoalConfig;
 };
 
 export interface EmuMemoryWatch {
@@ -50,6 +53,10 @@ export interface EmuAgentConfig {
   maxIterations: number;
   temperature: number;
   task: EmuTask;
+}
+
+export interface EmuGoalConfig {
+  condition: EmuCondition;
 }
 
 export interface EmuTestState {

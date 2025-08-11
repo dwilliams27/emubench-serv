@@ -161,3 +161,16 @@ export const emuSquareOperationFactory: () => EmuConditionOperation = () => ({
     throw new Error('Invalid operands for ^2');
   }
 });
+
+export const emuLeftIdentityOperationFactory: () => EmuConditionOperation = () => ({
+  id: genId(EMU_OPERATION_ID),
+  name: 'identity',
+  hasLeftOperand: false,
+  hasRightOperand: false,
+  func: (inputs, operands) => {
+    if (operands.lhs === undefined) {
+      throw new Error('Left operand required for left identity operation');
+    }
+    return emuEvaluateOperand(inputs, operands.lhs);
+  }
+});

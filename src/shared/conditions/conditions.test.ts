@@ -1,24 +1,28 @@
 import { emuEvaluateCondition } from '@/shared/conditions/evaluate';
 import { emuAddOperationFactory, emuEqualsOperationFactory, emuLessThanOperationFactory, emuSquareOperationFactory } from '@/shared/conditions/operations';
-import type { EmuCondition } from '@/shared/conditions/types';
+import type { EmuCondition, EmuConditionInput } from '@/shared/conditions/types';
 import { describe, it, expect } from 'vitest';
 
 describe("EmuConditionInput", () => {
   it("1+1", () => {
+    const a: EmuConditionInput = {
+      name: "a",
+      type: "int",
+      rawValue: "00000001",
+    };
+    const b: EmuConditionInput = {
+      name: "b",
+      type: "int",
+      rawValue: "00000001",
+    };
     const condition: EmuCondition = {
       inputs: {
-        a: {
-          type: "int",
-          rawValue: "00000001",
-        },
-        b: {
-          type: "int",
-          rawValue: "00000001",
-        }
+        a,
+        b
       },
       logic: {
-        lhs: { inputName: "a" },
-        rhs: { inputName: "b" },
+        lhs: a,
+        rhs: b,
         operation: emuAddOperationFactory(),
       }
     }
@@ -26,26 +30,30 @@ describe("EmuConditionInput", () => {
   });
 
   it("1+1 < 2+2", () => {
+    const one: EmuConditionInput = {
+      name: "one",
+      type: "int",
+      rawValue: "00000001",
+    };
+    const two: EmuConditionInput = {
+      name: "two",
+      type: "int",
+      rawValue: "00000002",
+    };
     const condition: EmuCondition = {
       inputs: {
-        one: {
-          type: "int",
-          rawValue: "00000001",
-        },
-        two: {
-          type: "int",
-          rawValue: "00000002",
-        }
+        one,
+        two
       },
       logic: {
         lhs: {
-          lhs: { inputName: "one" },
-          rhs: { inputName: "one" },
+          lhs: one,
+          rhs: one,
           operation: emuAddOperationFactory(),
         },
         rhs: {
-          lhs: { inputName: "two" },
-          rhs: { inputName: "two" },
+          lhs: two,
+          rhs: two,
           operation: emuAddOperationFactory(),
         },
         operation: emuLessThanOperationFactory(),
@@ -55,24 +63,28 @@ describe("EmuConditionInput", () => {
   });
 
   it("5^2 < 6^2", () => {
+    const five: EmuConditionInput = {
+      name: "five",
+      type: "int",
+      rawValue: "00000005",
+    };
+    const six: EmuConditionInput = {
+      name: "six",
+      type: "int",
+      rawValue: "00000006",
+    };
     const condition: EmuCondition = {
       inputs: {
-        five: {
-          type: "int",
-          rawValue: "00000005",
-        },
-        six: {
-          type: "int",
-          rawValue: "00000006",
-        }
+        five,
+        six
       },
       logic: {
         lhs: {
-          lhs: { inputName: "five" },
+          lhs: five,
           operation: emuSquareOperationFactory(),
         },
         rhs: {
-          lhs: { inputName: "six" },
+          lhs: six,
           operation: emuSquareOperationFactory(),
         },
         operation: emuLessThanOperationFactory(),
@@ -82,15 +94,17 @@ describe("EmuConditionInput", () => {
   });
 
   it("Uint(FFFFFFFF) === 4294967295", () => {
+    const maxUint: EmuConditionInput = {
+      name: "maxUint",
+      type: "uint",
+      rawValue: "FFFFFFFF",
+    };
     const condition: EmuCondition = {
       inputs: {
-        maxUint: {
-          type: "uint",
-          rawValue: "FFFFFFFF",
-        },
+        maxUint,
       },
       logic: {
-        lhs: { inputName: "maxUint" },
+        lhs: maxUint,
         rhs: 4294967295,
         operation: emuEqualsOperationFactory(),
       }
@@ -99,15 +113,17 @@ describe("EmuConditionInput", () => {
   });
 
   it("Chars(475A4C453031) === GZLE01", () => {
+    const GAME_ID: EmuConditionInput = {
+      name: "GAME_ID",
+      type: "chars",
+      rawValue: "475A4C453031",
+    };
     const condition: EmuCondition = {
       inputs: {
-        GAME_ID: {
-          type: "chars",
-          rawValue: "475A4C453031",
-        },
+        GAME_ID,
       },
       logic: {
-        lhs: { inputName: "GAME_ID" },
+        lhs: GAME_ID,
         rhs: "GZLE01",
         operation: emuEqualsOperationFactory(),
       }
@@ -116,15 +132,17 @@ describe("EmuConditionInput", () => {
   });
 
   it("Float(BF800000) === -1", () => {
+    const FLOAT: EmuConditionInput = {
+      name: "FLOAT",
+      type: "float",
+      rawValue: "BF800000",
+    };
     const condition: EmuCondition = {
       inputs: {
-        FLOAT: {
-          type: "float",
-          rawValue: "BF800000",
-        },
+        FLOAT,
       },
       logic: {
-        lhs: { inputName: "FLOAT" },
+        lhs: FLOAT,
         rhs: -1,
         operation: emuEqualsOperationFactory(),
       }
@@ -133,20 +151,24 @@ describe("EmuConditionInput", () => {
   });
 
   it("Float(BF800000) === Int(FFFFFFFF)", () => {
+    const FLOAT: EmuConditionInput = {
+      name: "FLOAT",
+      type: "float",
+      rawValue: "BF800000",
+    };
+    const INT: EmuConditionInput = {
+      name: "INT",
+      type: "int",
+      rawValue: "FFFFFFFF",
+    };
     const condition: EmuCondition = {
       inputs: {
-        FLOAT: {
-          type: "float",
-          rawValue: "BF800000",
-        },
-        INT: {
-          type: "int",
-          rawValue: "FFFFFFFF",
-        }
+        FLOAT,
+        INT
       },
       logic: {
-        lhs: { inputName: "FLOAT" },
-        rhs: { inputName: "INT" },
+        lhs: FLOAT,
+        rhs: INT,
         operation: emuEqualsOperationFactory(),
       }
     }

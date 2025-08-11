@@ -1,7 +1,7 @@
 export type EmuConditionInputType = 'int' | 'uint' | 'float' | 'hex' | 'chars';
 
 export interface EmuConditionInput {
-  name?: string;
+  name: string;
   type: EmuConditionInputType;
   rawValue: string; // Hex string
   parsedValue?: EmuConditionPrimitiveResult;
@@ -24,8 +24,7 @@ export interface EmuConditionParentheses {
 
 export type EmuConditionInputSet = Record<string, EmuConditionInput>;
 export type EmuConditionPrimitiveResult = string | number | boolean;
-export type EmuConditionLookupValue = { inputName: string, value?: EmuConditionPrimitiveResult };
-export type EmuConditionOperand = EmuConditionPrimitiveResult | EmuConditionLookupValue | EmuConditionPart;
+export type EmuConditionOperand = EmuConditionPrimitiveResult | EmuConditionInput | EmuConditionPart;
 export type EmuConditionOperationFunction = (inputs: EmuConditionInputSet, operands: { lhs?: EmuConditionOperand, rhs?: EmuConditionOperand }) => EmuConditionPrimitiveResult;
 
 export interface EmuConditionOperation {
@@ -43,7 +42,6 @@ export interface EmuLinkedExpressionPart {
 }
 
 export interface EmuRawExpressionPart {
-  type: 'primitive' | 'input' | 'operation' | 'parentheses';
   primitiveValue?: string | number | boolean;
   input?: EmuConditionInput;
   operation?: EmuConditionOperation;

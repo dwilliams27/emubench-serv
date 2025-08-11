@@ -2,7 +2,7 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuAgentConfig, EmuTestConfig } from "@/shared/types";
+import { EmuActiveTestReponse, EmuAgentConfig, EmuGoalConfig, EmuTestConfig } from "@/shared/types";
 import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 
@@ -15,6 +15,7 @@ export const setupTest = async (req: Request, res: Response) => {
   try {
     const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
     const agentConfig: EmuAgentConfig = req.body.agentConfig;
+    const goalConfig: EmuGoalConfig = req.body.goalConfig;
 
     if (agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
       res.status(400).send('Max iterations too large');
@@ -28,7 +29,7 @@ export const setupTest = async (req: Request, res: Response) => {
       res.status(500).send('Failed to create session folder');
       return;
     }
-    const writeConfig = await testService.writeBootConfig({ testConfig, agentConfig });
+    const writeConfig = await testService.writeBootConfig({ testConfig, agentConfig, goalConfig });
     if (!writeConfig) {
       console.error('Failed to write boot config file');
       res.status(500).send('Failed to write BOOT_CONFIG');
