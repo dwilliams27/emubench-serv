@@ -45,6 +45,9 @@ export function emuParseAndPopulateConditionInput(input: EmuConditionInput): Emu
   if (input.parsedValue !== undefined) {
     return input.parsedValue;
   }
+  if (!input.rawValue) {
+    throw new Error(`Input ${input.name} has no raw value`);
+  }
   switch (input.type) {
     case 'int': {
       return hexToInt(input.rawValue);

@@ -3,7 +3,7 @@ export type EmuConditionInputType = 'int' | 'uint' | 'float' | 'hex' | 'chars';
 export interface EmuConditionInput {
   name: string;
   type: EmuConditionInputType;
-  rawValue: string; // Hex string
+  rawValue?: string; // Hex string
   parsedValue?: EmuConditionPrimitiveResult;
 }
 
