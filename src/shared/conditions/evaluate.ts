@@ -1,6 +1,6 @@
 import { hexToAscii, hexToFloat, hexToInt, hexToUint } from "@/shared/conditions/helpers";
 import { emuLeftIdentityOperationFactory } from "@/shared/conditions/operations";
-import type { EmuCondition, EmuConditionPrimitiveResult, EmuConditionInputSet, EmuConditionOperand, EmuConditionInput, EmuLinkedExpressionPart, EmuRawExpressionPart, EmuConditionParentheses } from "@/shared/conditions/types";
+import type { EmuCondition, EmuConditionPrimitiveResult, EmuConditionInputSet, EmuConditionOperand, EmuConditionInput, EmuLinkedExpressionPart } from "@/shared/conditions/types";
 
 export function emuEvaluateCondition(condition?: EmuCondition): EmuConditionPrimitiveResult {
   if (!condition?.logic) {
@@ -15,26 +15,24 @@ export function emuEvaluateCondition(condition?: EmuCondition): EmuConditionPrim
 
   const result = emuEvaluateOperand(
     condition.inputs,
-    condition.logic
+    { conditionPart: condition.logic }
   );
 
   return result;
 }
 
 export function emuEvaluateOperand(inputs: EmuConditionInputSet, operand: EmuConditionOperand): EmuConditionPrimitiveResult {
-   if (typeof operand === 'object' && 'lhs' in operand && 'operation' in operand) {
-    // If part
-    const lhsResult = operand.lhs ? emuEvaluateOperand(inputs, operand.lhs) : undefined;
-    const rhsResult = operand.rhs ? emuEvaluateOperand(inputs, operand.rhs) : undefined;
-    return operand.operation.func(inputs, { lhs: lhsResult, rhs: rhsResult });
-  } else if (typeof operand === 'number' || typeof operand === 'string' || typeof operand === 'boolean') {
-    // If primitive
-    return operand;
-  } else if (typeof operand === 'object' && 'name' in operand) {
+  if (operand.conditionPart) {
+    const lhsResult = operand.conditionPart.lhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.lhs) } : undefined;
+    const rhsResult = operand.conditionPart.rhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.rhs) } : undefined;
+    return operand.conditionPart.operation.func(inputs, { lhs: lhsResult, rhs: rhsResult });
+  } else if (operand.primitive) {
+    return operand.primitive;
+  } else if (operand.input) {
     // If lookup value
-    const parsedValue = inputs[operand.name]?.parsedValue;
+    const parsedValue = inputs[operand.input.name]?.parsedValue;
     if (parsedValue === undefined) {
-      throw new Error(`Input ${operand.name} not found in inputs`);
+      throw new Error(`Input ${operand.input.name} not found in inputs`);
     }
     return parsedValue;
   }
@@ -69,21 +67,6 @@ export function emuParseAndPopulateConditionInput(input: EmuConditionInput): Emu
   }
 }
 
-function rawExpressionPartToOperand(part: EmuRawExpressionPart): EmuConditionOperand | EmuConditionParentheses {
-  if (part.primitiveValue !== undefined) {
-    return part.primitiveValue;
-  } else if (part.input) {
-    return part.input;
-  } else if (part.operation) {
-    return {
-      operation: part.operation,
-    };
-  } else if (part.parentheses) {
-    return { open: part.parentheses?.open };
-  }
-  throw new Error('Invalid raw expression part: Must have primitiveValue, input, operation, or parentheses');
-}
-
 // ( 5 + 10 > 20 ) => ((5)+(10))>(20)
 function collapseGroup(head: EmuLinkedExpressionPart): { result?: EmuLinkedExpressionPart, error?: string } {
   if (!head.next) {
@@ -93,18 +76,18 @@ function collapseGroup(head: EmuLinkedExpressionPart): { result?: EmuLinkedExpre
   let curNode: EmuLinkedExpressionPart | undefined = head;
   let collapsedGroup;
   while (curNode && (typeof curNode.value !== 'object' || (typeof curNode.value === 'object' && !('open' in curNode.value && !curNode.value.open)))) {
-    if (typeof curNode.value === 'object' && 'operation' in curNode.value && !isFilledOperation(curNode)) {
-      if (curNode.value.operation.hasLeftOperand && !curNode.value.lhs) {
-        if (!curNode.prev || (typeof curNode.prev.value === 'object' && 'open' in curNode.prev.value)) {
+    if (curNode.value.conditionPart?.operation && !isFilledOperation(curNode)) {
+      if (curNode.value.conditionPart.operation.hasLeftOperand && !curNode.value.conditionPart.lhs) {
+        if (!curNode.prev || curNode.prev.value.parentheses) {
           return { error: 'Left operand required for operation' };
         }
-        curNode.value.lhs = curNode.prev.value;
+        curNode.value.conditionPart.lhs = curNode.prev.value;
       }
-      if (curNode.value.operation.hasRightOperand && !curNode.value.rhs) {
-        if (!curNode.next || (typeof curNode.next.value === 'object' && 'open' in curNode.next.value)) {
+      if (curNode.value.conditionPart.operation.hasRightOperand && !curNode.value.conditionPart.rhs) {
+        if (!curNode.next || curNode.next.value.parentheses) {
           return { error: 'Right operand required for operation' };
         }
-        curNode.value.rhs = curNode.next.value;
+        curNode.value.conditionPart.rhs = curNode.next.value;
       }
       collapsedGroup = curNode;
     }
@@ -116,11 +99,11 @@ function collapseGroup(head: EmuLinkedExpressionPart): { result?: EmuLinkedExpre
   return { result: collapsedGroup };
 }
 
-export function validateEmuExpression(expression: EmuRawExpressionPart[]): { error?: string } {
+export function validateEmuExpression(expression: EmuConditionOperand[]): { error?: string } {
   if (expression.length === 0) {
     return { error: 'Expression cannot be empty' };
   }
-  if (expression.length === 1 && (!expression[0].primitiveValue || (expression[0].primitiveValue && typeof expression[0].primitiveValue !== 'boolean'))) {
+  if (expression.length === 1 && (!expression[0].primitive || (expression[0].primitive && typeof expression[0].primitive !== 'boolean'))) {
     return { error: 'Expression must have at least one valid part' };
   }
   let openParenCount = 0;
@@ -141,27 +124,27 @@ export function validateEmuExpression(expression: EmuRawExpressionPart[]): { err
   }
   for (let i = 0; i < expression.length; i++) {
     const part = expression[i];
-    if (part.operation) {
-      if ((part.operation.hasLeftOperand && i === 0) || // needs left but no left
-        (part.operation.hasLeftOperand && !( // has left that is NOT....
-          expression[i-1].primitiveValue || // value
+    if (part.conditionPart?.operation) {
+      if ((part.conditionPart.operation.hasLeftOperand && i === 0) || // needs left but no left
+        (part.conditionPart.operation.hasLeftOperand && !( // has left that is NOT....
+          expression[i-1].primitive || // value
           expression[i-1].input || // input
-          (expression[i-1].operation && expression[i-1].operation?.hasLeftOperand) || // operation that will eval on left
+          (expression[i-1].conditionPart?.operation && expression[i-1].conditionPart?.operation?.hasLeftOperand) || // operation that will eval on left
           (expression[i-1].parentheses && !expression[i-1].parentheses?.open) // paren group that will eval
         ))
       ) {
-        return { error: `Operation ${part.operation.name} requires a valid left operand` };
+        return { error: `Operation ${part.conditionPart?.operation.name} requires a valid left operand` };
       }
-      if ((part.operation.hasRightOperand && i === expression.length - 1) ||
-        (part.operation.hasRightOperand && !(
+      if ((part.conditionPart.operation.hasRightOperand && i === expression.length - 1) ||
+        (part.conditionPart.operation.hasRightOperand && !(
           i < expression.length ||
-          expression[i+1].primitiveValue ||
+          expression[i+1].primitive ||
           expression[i+1].input ||
-          (expression[i+1].operation && expression[i+1].operation?.hasRightOperand) ||
+          (expression[i+1].conditionPart?.operation && expression[i+1].conditionPart?.operation?.hasRightOperand) ||
           (expression[i+1].parentheses && expression[i+1].parentheses?.open)
         ))
       ) {
-        return { error: `Operation ${part.operation.name} requires a valid right operand` };
+        return { error: `Operation ${part.conditionPart.operation.name} requires a valid right operand` };
       }
     }
   }
@@ -171,7 +154,7 @@ export function validateEmuExpression(expression: EmuRawExpressionPart[]): { err
 
 // 1. Convert to linked list
 // 2. Backtrack every closed paren to collapse group
-export function convertEmuExpressionToCondition(expression: EmuRawExpressionPart[]): { result?: EmuCondition, error?: string } {
+export function convertEmuExpressionToCondition(expression: EmuConditionOperand[]): { result?: EmuCondition, error?: string } {
   console.log("Converting expression to condition:", expression);
   if (!expression[0].parentheses?.open || expression[expression.length - 1].parentheses?.open === undefined) {
     expression.unshift({ parentheses: { open: true } });
@@ -186,14 +169,14 @@ export function convertEmuExpressionToCondition(expression: EmuRawExpressionPart
   
   const headNode: EmuLinkedExpressionPart = {
     next: undefined,
-    value: rawExpressionPartToOperand(expression[0]),
+    value: expression[0],
   };
   let curNode: EmuLinkedExpressionPart | undefined = headNode;
   for (let i = 1; i < expression.length; i++) {
     const newNode: EmuLinkedExpressionPart = {
       prev: curNode,
       next: undefined,
-      value: rawExpressionPartToOperand(expression[i]),
+      value: expression[i],
     };
     curNode.next = newNode;
     curNode = newNode;
@@ -242,18 +225,19 @@ export function convertEmuExpressionToCondition(expression: EmuRawExpressionPart
     return {
       result: {
         inputs,
-        logic: { operation: emuLeftIdentityOperationFactory(), lhs: expression[0].primitiveValue || expression[0].input }
+        logic: { operation: emuLeftIdentityOperationFactory(), lhs: { primitive: expression[0].primitive, input: expression[0].input }}
       }
     };
   }
-  if (typeof lastCollapsedGroup.result?.value !== 'object' || !('operation' in lastCollapsedGroup.result?.value)) {
+  if (lastCollapsedGroup.result?.value.conditionPart?.operation) {
     return { error: 'Expression must have an operation' };
   }
 
   return {
     result: {
       inputs,
-      logic: lastCollapsedGroup.result?.value
+      // TODO: undef check?
+      logic: lastCollapsedGroup.result?.value.conditionPart!
     }
   };
 }
@@ -272,10 +256,10 @@ function isFilledOperation(part: EmuLinkedExpressionPart): boolean {
   if (typeof part.value !== 'object' || !('operation' in part.value)) {
     return false;
   }
-  if (part.value.operation.hasLeftOperand && !part.value.lhs) {
+  if (part.value.conditionPart?.operation.hasLeftOperand && !part.value.conditionPart.lhs) {
     return false;
   }
-  if (part.value.operation.hasRightOperand && !part.value.rhs) {
+  if (part.value.conditionPart?.operation.hasRightOperand && !part.value.conditionPart.rhs) {
     return false;
   }
   return true;

@@ -21,8 +21,8 @@ describe("EmuConditionInput", () => {
         b
       },
       logic: {
-        lhs: a,
-        rhs: b,
+        lhs: { input: a },
+        rhs: { input: b },
         operation: emuAddOperationFactory(),
       }
     }
@@ -47,14 +47,18 @@ describe("EmuConditionInput", () => {
       },
       logic: {
         lhs: {
-          lhs: one,
-          rhs: one,
-          operation: emuAddOperationFactory(),
+          conditionPart: {
+            lhs: { input: one },
+            rhs: { input: one },
+            operation: emuAddOperationFactory(),
+          }
         },
         rhs: {
-          lhs: two,
-          rhs: two,
-          operation: emuAddOperationFactory(),
+          conditionPart: {
+            lhs: { input: two },
+            rhs: { input: two },
+            operation: emuAddOperationFactory(),
+          }
         },
         operation: emuLessThanOperationFactory(),
       }
@@ -80,12 +84,16 @@ describe("EmuConditionInput", () => {
       },
       logic: {
         lhs: {
-          lhs: five,
-          operation: emuSquareOperationFactory(),
+          conditionPart: {
+            lhs: { input: five },
+            operation: emuSquareOperationFactory(),
+          }
         },
         rhs: {
-          lhs: six,
-          operation: emuSquareOperationFactory(),
+          conditionPart: {
+            lhs: { input: six },
+            operation: emuSquareOperationFactory(),
+          }
         },
         operation: emuLessThanOperationFactory(),
       }
@@ -104,8 +112,8 @@ describe("EmuConditionInput", () => {
         maxUint,
       },
       logic: {
-        lhs: maxUint,
-        rhs: 4294967295,
+        lhs: { input: maxUint },
+        rhs: { primitive: 4294967295 },
         operation: emuEqualsOperationFactory(),
       }
     }
@@ -123,8 +131,8 @@ describe("EmuConditionInput", () => {
         GAME_ID,
       },
       logic: {
-        lhs: GAME_ID,
-        rhs: "GZLE01",
+        lhs: { input: GAME_ID },
+        rhs: { primitive: "GZLE01" },
         operation: emuEqualsOperationFactory(),
       }
     }
@@ -142,8 +150,8 @@ describe("EmuConditionInput", () => {
         FLOAT,
       },
       logic: {
-        lhs: FLOAT,
-        rhs: -1,
+        lhs: { input: FLOAT },
+        rhs: { primitive: -1 },
         operation: emuEqualsOperationFactory(),
       }
     }
@@ -167,8 +175,8 @@ describe("EmuConditionInput", () => {
         INT
       },
       logic: {
-        lhs: FLOAT,
-        rhs: INT,
+        lhs: { input: FLOAT },
+        rhs: { input: INT },
         operation: emuEqualsOperationFactory(),
       }
     }

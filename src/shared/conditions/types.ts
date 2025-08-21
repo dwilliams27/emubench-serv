@@ -22,9 +22,15 @@ export interface EmuConditionParentheses {
   open: boolean;
 }
 
+export interface EmuConditionOperand {
+  primitive?: EmuConditionPrimitiveResult;
+  input?: EmuConditionInput;
+  conditionPart?: EmuConditionPart;
+  parentheses?: EmuConditionParentheses;
+};
+
 export type EmuConditionInputSet = Record<string, EmuConditionInput>;
 export type EmuConditionPrimitiveResult = string | number | boolean;
-export type EmuConditionOperand = EmuConditionPrimitiveResult | EmuConditionInput | EmuConditionPart;
 export type EmuConditionOperationFunction = (inputs: EmuConditionInputSet, operands: { lhs?: EmuConditionOperand, rhs?: EmuConditionOperand }) => EmuConditionPrimitiveResult;
 
 export interface EmuConditionOperation {
@@ -38,14 +44,5 @@ export interface EmuConditionOperation {
 export interface EmuLinkedExpressionPart {
   prev?: EmuLinkedExpressionPart;
   next?: EmuLinkedExpressionPart;
-  value: EmuConditionOperand | EmuConditionParentheses;
-}
-
-export interface EmuRawExpressionPart {
-  primitiveValue?: string | number | boolean;
-  input?: EmuConditionInput;
-  operation?: EmuConditionOperation;
-  parentheses?: {
-    open: boolean;
-  };
+  value: EmuConditionOperand;
 }
