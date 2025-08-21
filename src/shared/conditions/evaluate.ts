@@ -2,16 +2,35 @@ import { hexToAscii, hexToFloat, hexToInt, hexToUint } from "@/shared/conditions
 import { emuLeftIdentityOperationFactory } from "@/shared/conditions/operations";
 import type { EmuCondition, EmuConditionPrimitiveResult, EmuConditionInputSet, EmuConditionOperand, EmuConditionInput, EmuLinkedExpressionPart } from "@/shared/conditions/types";
 
+export function emuFlattenCondition(condition: EmuCondition): EmuConditionOperand[] {
+  emuParseAndPopulateCondition(condition);
+
+  return emuFlattenConditionHelper({ conditionPart: condition.logic }, []);
+}
+
+function emuFlattenConditionHelper(currentNode: EmuConditionOperand, currentResult: EmuConditionOperand[]): EmuConditionOperand[] {
+  if (currentNode.conditionPart) {
+    if (currentNode.conditionPart.lhs) {
+      currentResult = emuFlattenConditionHelper(currentNode.conditionPart.lhs, currentResult);
+    }
+    currentResult.push({ conditionPart: { operation: currentNode.conditionPart.operation } });
+    if (currentNode.conditionPart.rhs) {
+      currentResult = emuFlattenConditionHelper(currentNode.conditionPart.rhs, currentResult);
+    }
+  } else {
+    currentResult.push(currentNode);
+  }
+
+  return currentResult;
+}
+
 export function emuEvaluateCondition(condition?: EmuCondition): EmuConditionPrimitiveResult {
   if (!condition?.logic) {
     throw new Error('Invalid condition: Logic must be defined');
   }
 
   // TODO: Handle pointers
-  for (const inputName in condition.inputs) {
-    const input = condition.inputs[inputName];
-    input.parsedValue = emuParseAndPopulateConditionInput(input);
-  }
+  emuParseAndPopulateCondition(condition);
 
   const result = emuEvaluateOperand(
     condition.inputs,
@@ -19,6 +38,13 @@ export function emuEvaluateCondition(condition?: EmuCondition): EmuConditionPrim
   );
 
   return result;
+}
+
+export function emuParseAndPopulateCondition(condition: EmuCondition) {
+  for (const inputName in condition.inputs) {
+    const input = condition.inputs[inputName];
+    input.parsedValue = emuParseAndPopulateConditionInput(input);
+  }
 }
 
 export function emuEvaluateOperand(inputs: EmuConditionInputSet, operand: EmuConditionOperand): EmuConditionPrimitiveResult {
