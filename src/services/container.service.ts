@@ -4,6 +4,7 @@ import { EmuTestConfig } from '@/shared/types';
 import { protos } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";
+import { formatError } from '@/shared/utils/error';
 
 export class ContainerService {
   // TODO: Probably make async job
@@ -67,7 +68,7 @@ export class ContainerService {
       });
       console.log(`[Container] Health check successful for service ${testId}: ${response.data}`);
     } catch (error) {
-      console.error(`Health check failed for service ${testId}: ${(error as any).message}`);
+      console.error(`Health check failed for service ${testId}: ${formatError(error)}`);
     }
 
     try {
@@ -79,7 +80,7 @@ export class ContainerService {
       });
       console.log(`[Container] Memwatch get successful for service ${testId}: ${response.data}`);
     } catch (error) {
-      console.error(`Memwatch get failed for service ${testId}: ${(error as any).message}`);
+      console.error(`Memwatch get failed for service ${testId}: ${formatError(error)}`);
     }
 
     return { identityToken, service };
@@ -90,7 +91,7 @@ export class ContainerService {
       await gcpService.deleteService(serviceName);
       console.log(`[Container] Service ${serviceName} deleted successfully`);
     } catch (error) {
-      console.error(`Failed to delete service ${serviceName}: ${(error as any).message}`);
+      console.error(`Failed to delete service ${serviceName}: ${formatError(error)}`);
     }
   }
 

@@ -1,4 +1,5 @@
 import { sessionService } from '@/services/session.service';
+import { formatError } from '@/shared/utils/error';
 import { Request, Response, NextFunction } from 'express';
 import admin from 'firebase-admin';
 
@@ -44,12 +45,12 @@ export async function firebaseAuthMiddleware(
       next();
       
     } catch (firebaseError) {
-      console.log(`[AUTH] Token is not a valid Firebase token ${(firebaseError as any).message}`);
+      console.error(`[AUTH] Token is not a valid Firebase token ${formatError(firebaseError)}`);
       res.status(401).json({ error: 'Invalid or expired token' });
     }
 
   } catch (error) {
-    console.error('[AUTH] Authentication error:', error);
+    console.error(`[AUTH] Authentication error: ${formatError(error)}`);
     res.status(500).json({ error: 'Internal authentication error' });
   }
 }

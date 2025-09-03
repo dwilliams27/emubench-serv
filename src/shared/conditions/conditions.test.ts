@@ -1,6 +1,6 @@
-import { emuEvaluateCondition, emuFlattenCondition } from '@/shared/conditions/evaluate';
+import { convertEmuExpressionToCondition, emuEvaluateCondition, emuFlattenCondition } from '@/shared/conditions/evaluate';
 import { emuAddOperationFactory, emuEqualsOperationFactory, emuLessThanOperationFactory, emuSquareOperationFactory } from '@/shared/conditions/operations';
-import type { EmuCondition, EmuConditionInput } from '@/shared/conditions/types';
+import type { EmuCondition, EmuConditionInput, EmuConditionOperand } from '@/shared/conditions/types';
 import { describe, it, expect } from 'vitest';
 
 describe("EmuCondition", () => {
@@ -266,5 +266,62 @@ describe("EmuCondition", () => {
         },
       ])
     })
+  });
+
+  describe("Expression -> Condition", () => {
+    it.only("GAME_ID == GAME_ID", () => {
+      const equalsOperation = emuEqualsOperationFactory();
+      const gameIdInput = {
+        name: "GAME_ID",
+        type: "chars",
+      }
+      const rawExpression: EmuConditionOperand[] = [
+        {
+          parentheses: {
+            open: true
+          }
+        },
+        {
+          input: {
+            name: "GAME_ID",
+            type: "chars",
+          }
+        },
+        {
+          conditionPart: {
+            operation: equalsOperation
+          }
+        },
+        {
+          input: {
+            name: "GAME_ID",
+            type: "chars",
+          }
+        },
+        {
+          parentheses: {
+            open: false
+          }
+        }
+      ]
+      const condition = convertEmuExpressionToCondition(rawExpression);
+      expect(condition).toEqual({
+        result: {
+          inputs: {
+            GAME_ID: gameIdInput
+          },
+          logic: {
+            lhs: {
+              input: gameIdInput
+            },
+            rhs: {
+              input: gameIdInput
+            },
+            operation: equalsOperation
+          }
+        }
+      });
+    });
+
   })
 });

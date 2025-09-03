@@ -3,6 +3,7 @@ import { SESSION_FUSE_PATH } from "@/types/session";
 import { EmuBootConfig, EmuLogBlock, EmuSharedTestState, EmuTestState } from "@/shared/types";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { formatError } from "@/shared/utils/error";
 
 export class TestService {
   async createTestSessionFolder(testId: string): Promise<boolean> {
@@ -11,7 +12,7 @@ export class TestService {
       await mkdir(dirPath, { recursive: true });
       return true;
     } catch (error) {
-      console.error('Error creating test session dir:', error);
+      console.error(`Error creating test session dir: ${formatError(error)}`);
     }
     return false;
   }
@@ -25,7 +26,7 @@ export class TestService {
       const bootConfig = JSON.parse(testConfigData) as EmuBootConfig;
       return bootConfig;
     } catch (error) {
-      console.error('Error reading BOOT_CONFIG', error);
+      console.error(`Error reading BOOT_CONFIG ${formatError(error)}`);
     }
     return null;
   }
@@ -42,7 +43,7 @@ export class TestService {
 
       return true;
     } catch (error) {
-      console.error('Error writing BOOT_CONFIG', error);
+      console.error(`Error writing BOOT_CONFIG: ${formatError(error)}`);
     }
     return false;
   }
@@ -60,7 +61,7 @@ export class TestService {
 
       return true;
     } catch (error) {
-      console.error('Error writing SHARED_STATE', error);
+      console.error(`Error writing SHARED_STATE: ${formatError(error)}`);
     }
     return false;
   }
@@ -81,7 +82,7 @@ export class TestService {
       });
       return logs as unknown as EmuLogBlock[];
     } catch (error) {
-      console.log(`[Test] Error getting agent logs: ${JSON.stringify((error as any).message)}`)
+      console.error(`[Test] Error getting agent logs: ${formatError(error)}`)
       return [];
     }
   }
@@ -97,7 +98,7 @@ export class TestService {
       });
       return testState as unknown as EmuTestState;
     } catch (error) {
-      console.log(`[Test] Error getting TEST_STATE: ${JSON.stringify((error as any).message)}`)
+      console.error(`[Test] Error getting TEST_STATE: ${formatError(error)}`)
       return null;
     }
   }

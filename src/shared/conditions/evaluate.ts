@@ -212,9 +212,9 @@ export function convertEmuExpressionToCondition(expression: EmuConditionOperand[
   let lastCollapsedGroup;
   curNode = headNode;
   while (curNode) {
-    if (typeof curNode.value === 'object' && 'open' in curNode.value && curNode.value.open) {
+    if (curNode.value.parentheses?.open) {
       lastOpenParenStack.push(curNode);
-    } else if (typeof curNode.value === 'object' && 'open' in curNode.value && curNode.value.open === false) {
+    } else if (curNode.value.parentheses?.open === false) {
       if (lastOpenParenStack.length === 0) {
         return { error: 'Parsing error on close parenthesis' };
       }
@@ -255,7 +255,7 @@ export function convertEmuExpressionToCondition(expression: EmuConditionOperand[
       }
     };
   }
-  if (lastCollapsedGroup.result?.value.conditionPart?.operation) {
+  if (!lastCollapsedGroup.result?.value.conditionPart?.operation) {
     return { error: 'Expression must have an operation' };
   }
 

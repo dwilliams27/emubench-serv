@@ -5,6 +5,7 @@ import { ActiveTest } from "@/types/session";
 import { EmuActiveTestReponse, EmuAgentConfig, EmuGoalConfig, EmuTestConfig } from "@/shared/types";
 import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
+import { formatError } from "@/shared/utils/error";
 
 const DEBUG_MAX_ITERATIONS = 30;
 
@@ -59,7 +60,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
     res.send({ testId });
   } catch (error) {
-    console.error('Error setting up test:', JSON.stringify(error));
+    console.error(`Error setting up test: ${formatError(error)}`);
     res.status(500).send('Failed to set up test');
   }
 }
@@ -82,7 +83,7 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
 
     await testService.writeSharedTestState(activeTest.id, { exchangeToken: activeTest.exchangeToken, emulatorUri: service.uri! });
   } catch (error) {
-    console.error(`[TEST] Error setting up test ${activeTest.id}`, error);
+    console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
     activeTest.emulatorStatus = 'error';
   }
 }
@@ -95,7 +96,7 @@ async function asyncAgentSetup(activeTest: ActiveTest, authToken: string) {
       activeTest.agentStatus = 'running';
     }
   } catch (error) {
-    console.error(`[TEST] Error setting up test ${activeTest.id}`, error);
+    console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
     activeTest.agentStatus = 'error';
   }
 }
