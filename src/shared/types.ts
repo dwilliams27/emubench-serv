@@ -1,4 +1,4 @@
-import { EmuCondition } from "@/shared/conditions/types";
+import { EmuCondition, EmuConditionPrimitiveResult } from "@/shared/conditions/types";
 
 export interface EmuLogItem {
   text: string;
@@ -25,9 +25,9 @@ export interface EmuBootConfig {
 };
 
 export interface EmuMemoryWatch {
-  address: string; // Address in hex format, e.g. "0x80000000"
-  offset?: string; // If the address is a pointer, this is the offset to read from
-  size: number; // Size in bytes
+  address: string;
+  pointerOffsets?: string[];
+  size: number;
 }
 
 export interface EmuTestConfig {
@@ -76,6 +76,7 @@ export interface EmuActiveTestReponse {
   agentLogs: EmuLogBlock[];
   emulatorStatus: 'starting' | 'running' | 'finished' | 'error';
   agentStatus: 'starting' | 'running' | 'finished' | 'error';
+  goalConfig: EmuGoalConfig;
 }
 
 export interface EmuTurn {
@@ -86,7 +87,6 @@ export interface EmuTurn {
 export interface EmuLlmMessageContentItem {
   type: 'text' | 'image';
   text?: string;
-  // @ts-ignore
   image?: string;
 }
 

@@ -40,7 +40,8 @@ export const setupTest = async (req: Request, res: Response) => {
     const activeTest: ActiveTest = {
       id: testId,
       exchangeToken: genId(EXCHANGE_TOKEN_ID),
-      emuConfig: testConfig,
+      testConfig,
+      goalConfig,
       emulatorStatus: 'starting',
       agentStatus: 'starting'
     }
@@ -67,7 +68,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
 async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
   try {
-    const gameContainer = await containerService.deployGame(activeTest.id, activeTest.emuConfig);
+    const gameContainer = await containerService.deployGame(activeTest.id, activeTest.testConfig);
 
     if (!gameContainer.service.uri) {
       throw new Error('Unable to find container URL');
@@ -191,7 +192,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     res.status(400).send(`No active test found for id ${req.params.testId}`);
     return;
   }
-  const testId = activeTest.emuConfig.id;
+  const testId = activeTest.testConfig.id;
 
   const screenshots = await getScreenshotsFromTest(activeTest);
 
@@ -202,10 +203,11 @@ export const getEmuTestState = async (req: Request, res: Response) => {
   const testState = await testService.getTestState(testId);
 
   res.send({
-    testState: testState,
+    testState,
     screenshots,
     agentLogs,
     emulatorStatus: activeTest.emulatorStatus,
     agentStatus: activeTest.agentStatus,
+    goalConfig: activeTest.goalConfig
   } as EmuActiveTestReponse);
 }
