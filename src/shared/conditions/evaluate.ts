@@ -2,7 +2,10 @@ import { hexToAscii, hexToFloat, hexToInt, hexToUint } from "@/shared/conditions
 import { emuLeftIdentityOperationFactory } from "@/shared/conditions/operations";
 import type { EmuCondition, EmuConditionPrimitiveResult, EmuConditionInputSet, EmuConditionOperand, EmuConditionInput, EmuLinkedExpressionPart } from "@/shared/conditions/types";
 
-export function emuFlattenCondition(condition: EmuCondition): EmuConditionOperand[] {
+export function emuFlattenCondition(condition?: EmuCondition): EmuConditionOperand[] {
+  if (!condition?.logic) {
+    return [];
+  }
   emuParseAndPopulateCondition(condition);
 
   return emuFlattenConditionHelper({ conditionPart: condition.logic }, []);

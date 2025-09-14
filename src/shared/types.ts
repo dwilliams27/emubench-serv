@@ -1,4 +1,4 @@
-import { EmuCondition, EmuConditionPrimitiveResult } from "@/shared/conditions/types";
+import { EmuCondition } from "@/shared/conditions/types";
 
 export interface EmuLogItem {
   text: string;
@@ -63,6 +63,7 @@ export interface EmuTestState {
   status: 'booting' | 'emulator-ready' | 'running' | 'finished';
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
+  stateHistory: { [key: string]: Omit<EmuTestState, 'stateHistory'> };
 }
 
 export interface EmuSharedTestState {
