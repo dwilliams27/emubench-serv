@@ -12,7 +12,7 @@ async function readEmuBootConfigFromFirebase(testId: string): Promise<FEmuBootCo
         { collection: FB_2.BOOT_CONFIG }
       ],
     });
-    return bootConfig as unknown as FEmuBootConfig;
+    return bootConfig[0] as unknown as FEmuBootConfig;
   } catch (error) {
     console.error(`[RecL] Error reading BOOT_CONFIG: ${formatError(error)}`);
     return null;
@@ -52,7 +52,7 @@ async function readEmuTestStateFromFirebase(testId: string): Promise<FEmuTestSta
         { collection: FB_2.TEST_STATE }
       ],
     });
-    return testState as unknown as FEmuTestState;
+    return testState[0] as unknown as FEmuTestState;
   } catch (error) {
     console.error(`[RecL] Error reading TEST_STATE: ${formatError(error)}`);
     return null;
@@ -92,7 +92,7 @@ async function readEmuSharedTestStateFromFirebase(testId: string): Promise<FEmuS
         { collection: FB_2.SHARED_STATE }
       ],
     });
-    return sharedState as unknown as FEmuSharedTestState;
+    return sharedState[0] as unknown as FEmuSharedTestState;
   } catch (error) {
     console.error(`[RecL] Error reading SHARED_STATE: ${formatError(error)}`);
     return null;

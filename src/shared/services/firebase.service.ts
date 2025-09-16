@@ -1,11 +1,16 @@
 import { ID_MAP } from '@/shared/types/firebase';
 import { FID_LIST } from '@/shared/utils/id';
 import { initializeApp, getApps } from 'firebase-admin/app';
-import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
 
 export interface FirebasePathParams {
   collection: string;
   docId?: string;
+};
+
+type DocumentWithId = {
+  id: string;
+  [key: string]: any;
 };
 
 export class FirebaseService {
@@ -27,7 +32,7 @@ export class FirebaseService {
     return additionalPathIds ? this.drillDownPath(ID_MAP[res](...additionalPathIds, id)) : this.drillDownPath(ID_MAP[res](id));
   }
 
-  drillDownPath(params: FirebasePathParams[]): FirebaseFirestore.CollectionReference | FirebaseFirestore.DocumentReference {
+  drillDownPath(params: FirebasePathParams[]): CollectionReference | DocumentReference {
     if (params.length === 0) {
       throw new Error('At least one path parameter is required');
     }
@@ -39,16 +44,16 @@ export class FirebaseService {
       }
     }
 
-    let ref: FirebaseFirestore.CollectionReference | FirebaseFirestore.DocumentReference = this.db.collection(params[0].collection);
+    let ref: CollectionReference | DocumentReference = this.db.collection(params[0].collection);
 
     if (params[0].docId) {
       ref = ref.doc(params[0].docId);
     }
 
     for (let i = 1; i < params.length; i++) {
-      ref = (ref as FirebaseFirestore.DocumentReference).collection(params[i].collection);
+      ref = (ref as DocumentReference).collection(params[i].collection);
       if (params[i].docId) {
-        ref = (ref as FirebaseFirestore.CollectionReference).doc(params[i].docId!);
+        ref = (ref as CollectionReference).doc(params[i].docId!);
       }
     }
 
@@ -58,7 +63,7 @@ export class FirebaseService {
   // TODO: partial updates, considering created vs updated timestamps
   async write(options: {
     pathParams: FirebasePathParams[]
-    payload: any[]
+    payload: DocumentWithId[]
   }) {
     if (options.payload.length > 1) {
       throw Error('Can only write one object to a specific file');
@@ -69,8 +74,11 @@ export class FirebaseService {
     const batch = this.db.batch();
 
     options.payload.forEach(item => {
-      const docRef = this.drillDownPath(options.pathParams) as FirebaseFirestore.DocumentReference;
-      batch.set(docRef, {
+      let ref = this.drillDownPath(options.pathParams);
+      if (ref instanceof CollectionReference) {
+        ref = ref.doc(item.id);
+      }
+      batch.set(ref, {
         ...item,
         createdAt: FieldValue.serverTimestamp()
       });
