@@ -1,9 +1,10 @@
-import { FirebaseCollection, FirebaseFile, firebaseService, FirebaseSubCollection } from "@/services/firebase.service";
+import { firebaseService } from "@/shared/services/firebase.service";
 import { SESSION_FUSE_PATH } from "@/types/session";
 import { EmuBootConfig, EmuLogBlock, EmuSharedTestState, EmuTestState } from "@/shared/types";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { formatError } from "@/shared/utils/error";
+import { FB_1, FB_2 } from "@/shared/types/firebase";
 
 export class TestService {
   async createTestSessionFolder(testId: string): Promise<boolean> {
@@ -34,10 +35,10 @@ export class TestService {
   async writeBootConfig(bootConfig: EmuBootConfig): Promise<boolean> {
     try {
       await firebaseService.write({
-        testId: bootConfig.testConfig.id,
-        collection: FirebaseCollection.SESSIONS,
-        subCollection: FirebaseSubCollection.CONFIG,
-        file: FirebaseFile.BOOT_CONFIG,
+        pathParams: [
+          { collection: FB_1.SESSIONS, docId: bootConfig.testConfig.id },
+          { collection: FB_2.BOOT_CONFIG }
+        ],
         payload: [bootConfig]
       });
 
@@ -52,10 +53,10 @@ export class TestService {
     try {
       console.log(`[Test] Writing shared state for ${testId}...`)
       await firebaseService.write({
-        testId,
-        collection: FirebaseCollection.SESSIONS,
-        subCollection: FirebaseSubCollection.STATE,
-        file: FirebaseFile.SHARED_STATE,
+        pathParams: [
+          { collection: FB_1.SESSIONS, docId: testId },
+          { collection: FB_2.SHARED_STATE }
+        ],
         payload: [sharedTestState]
       });
 
@@ -70,37 +71,6 @@ export class TestService {
     const screenshotPath = path.join(`${SESSION_FUSE_PATH}/${testId}`, 'ScreenShots');
     const files = await readdir(screenshotPath);
     return files.sort();
-  }
-
-  async getAgentLogs(testId: string): Promise<EmuLogBlock[]> {
-    console.log(`[Test] Fetching agent logs in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.AGENT_LOGS}`)
-    try {
-      const logs = await firebaseService.read({
-        collection: FirebaseCollection.SESSIONS,
-        subCollection: FirebaseSubCollection.AGENT_LOGS,
-        testId: testId
-      });
-      return logs as unknown as EmuLogBlock[];
-    } catch (error) {
-      console.error(`[Test] Error getting agent logs: ${formatError(error)}`)
-      return [];
-    }
-  }
-
-  async getTestState(testId: string): Promise<EmuTestState | null> {
-    console.log(`[Test] Fetching test state in ${FirebaseCollection.SESSIONS}/${testId}/${FirebaseSubCollection.STATE}`)
-    try {
-      const testState = await firebaseService.read({
-        collection: FirebaseCollection.SESSIONS,
-        subCollection: FirebaseSubCollection.STATE,
-        file: FirebaseFile.TEST_STATE,
-        testId: testId
-      });
-      return testState as unknown as EmuTestState;
-    } catch (error) {
-      console.error(`[Test] Error getting TEST_STATE: ${formatError(error)}`)
-      return null;
-    }
   }
 }
 

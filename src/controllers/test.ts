@@ -6,6 +6,7 @@ import { EmuActiveTestReponse, EmuAgentConfig, EmuGoalConfig, EmuTestConfig } fr
 import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { formatError } from "@/shared/utils/error";
+import { freadAgentLogs, freadTestState } from "@/shared/services/resource-locator.service";
 
 const DEBUG_MAX_ITERATIONS = 30;
 
@@ -197,10 +198,10 @@ export const getEmuTestState = async (req: Request, res: Response) => {
   const screenshots = await getScreenshotsFromTest(activeTest);
 
   // Logs
-  const agentLogs = await testService.getAgentLogs(testId);
+  const agentLogs = await freadAgentLogs(testId);
 
   // Test state
-  const testState = await testService.getTestState(testId);
+  const testState = await freadTestState(testId);
 
   res.send({
     testState,
