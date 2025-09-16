@@ -12,6 +12,7 @@ export const HISTORY_ATOM_ID = 'hatom';
 export const BOOT_CONFIG_ID = 'bootcfg';
 export const TEST_STATE_ID = 'tstate';
 export const SHARED_TEST_STATE_ID = 'ststate';
+export const LOG_BLOCK_ID = 'logb';
 
 // Ids used for firebase docs
 export const FID_LIST = [

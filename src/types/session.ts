@@ -1,4 +1,4 @@
-import { EmuGoalConfig, EmuTestConfig } from "@/shared/types";
+import { EmuBootConfig, EmuSharedTestState } from "@/shared/types";
 import { protos } from "@google-cloud/run";
 
 export interface ContainerInstance {
@@ -10,8 +10,8 @@ export interface ContainerInstance {
 
 export interface ActiveTest {
   id: string;
-  testConfig: EmuTestConfig;
-  goalConfig: EmuGoalConfig;
+  bootConfig: EmuBootConfig;
+  sharedTestState: EmuSharedTestState;
   emulatorStatus: 'starting' | 'running' | 'finished' | 'error';
   agentStatus: 'starting' | 'running' | 'finished' | 'error';
   exchangeToken: string;

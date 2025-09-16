@@ -14,11 +14,13 @@ export interface EmuLogItem {
 }
 
 export interface EmuLogBlock {
+  id: string;
   title: string;
   logs: EmuLogItem[]
 }
 
 export interface EmuBootConfig {
+  id: string;
   agentConfig: EmuAgentConfig;
   testConfig: EmuTestConfig;
   goalConfig: EmuGoalConfig;
@@ -60,6 +62,7 @@ export interface EmuGoalConfig {
 }
 
 export interface EmuTestState {
+  id: string;
   status: 'booting' | 'emulator-ready' | 'running' | 'finished';
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
@@ -67,6 +70,7 @@ export interface EmuTestState {
 }
 
 export interface EmuSharedTestState {
+  id: string;
   emulatorUri?: string;
   exchangeToken?: string;
 }

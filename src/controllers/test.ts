@@ -2,11 +2,11 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuAgentConfig, EmuGoalConfig, EmuTestConfig } from "@/shared/types";
-import { EXCHANGE_TOKEN_ID, genId, TEST_ID } from "@/shared/utils/id";
+import { EmuActiveTestReponse, EmuBootConfig } from "@/shared/types";
+import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadTestState, fwriteBootConfig, fwriteSharedTestState } from "@/shared/services/resource-locator.service";
 
 const DEBUG_MAX_ITERATIONS = 30;
 
@@ -15,11 +15,14 @@ export const setupTest = async (req: Request, res: Response) => {
   console.log(`[TEST] Setting up test ${testId}`);
 
   try {
-    const testConfig: EmuTestConfig = { ...req.body.testConfig, id: testId };
-    const agentConfig: EmuAgentConfig = req.body.agentConfig;
-    const goalConfig: EmuGoalConfig = req.body.goalConfig;
+    const bootConfig: EmuBootConfig = {
+      id: genId(BOOT_CONFIG_ID),
+      agentConfig: req.body.agentConfig,
+      testConfig: { ...req.body.testConfig, id: testId },
+      goalConfig: req.body.goalConfig,
+    };
 
-    if (agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
+    if (bootConfig.agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
       res.status(400).send('Max iterations too large');
       return;
     }
@@ -31,7 +34,7 @@ export const setupTest = async (req: Request, res: Response) => {
       res.status(500).send('Failed to create session folder');
       return;
     }
-    const writeConfig = await testService.writeBootConfig({ testConfig, agentConfig, goalConfig });
+    const writeConfig = await fwriteBootConfig(testId, bootConfig);
     if (!writeConfig) {
       console.error('Failed to write boot config file');
       res.status(500).send('Failed to write BOOT_CONFIG');
@@ -41,13 +44,13 @@ export const setupTest = async (req: Request, res: Response) => {
     const activeTest: ActiveTest = {
       id: testId,
       exchangeToken: genId(EXCHANGE_TOKEN_ID),
-      testConfig,
-      goalConfig,
+      bootConfig,
+      sharedTestState: { id: genId(SHARED_TEST_STATE_ID) },
       emulatorStatus: 'starting',
       agentStatus: 'starting'
     }
 
-    const sharedTestState = await testService.writeSharedTestState(testId, {});
+    const sharedTestState = await fwriteSharedTestState(testId, activeTest.sharedTestState);
     if (!sharedTestState) {
       console.error('Failed to write SHARED_STATE');
       res.status(500).send('Failed to write SHARED_STATE');
@@ -69,7 +72,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
 async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
   try {
-    const gameContainer = await containerService.deployGame(activeTest.id, activeTest.testConfig);
+    const gameContainer = await containerService.deployGame(activeTest.id, activeTest.bootConfig.testConfig);
 
     if (!gameContainer.service.uri) {
       throw new Error('Unable to find container URL');
@@ -83,7 +86,14 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
       activeTest.emulatorStatus = 'running';
     }
 
-    await testService.writeSharedTestState(activeTest.id, { exchangeToken: activeTest.exchangeToken, emulatorUri: service.uri! });
+    await fwriteSharedTestState(
+      activeTest.id,
+      {
+        ...activeTest.sharedTestState,
+        exchangeToken: activeTest.exchangeToken,
+        emulatorUri: service.uri!
+      }
+    );
   } catch (error) {
     console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
     activeTest.emulatorStatus = 'error';
@@ -193,7 +203,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     res.status(400).send(`No active test found for id ${req.params.testId}`);
     return;
   }
-  const testId = activeTest.testConfig.id;
+  const testId = activeTest.bootConfig.testConfig.id;
 
   const screenshots = await getScreenshotsFromTest(activeTest);
 
@@ -209,6 +219,6 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     agentLogs,
     emulatorStatus: activeTest.emulatorStatus,
     agentStatus: activeTest.agentStatus,
-    goalConfig: activeTest.goalConfig
+    goalConfig: activeTest.bootConfig.goalConfig
   } as EmuActiveTestReponse);
 }
