@@ -2,11 +2,11 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuBootConfig } from "@/shared/types";
+import { EmuActiveTestReponse, EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuTestConfig, EmuTestState } from "@/shared/types";
 import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadTestState, fwriteBootConfig, fwriteSharedTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
 
 const DEBUG_MAX_ITERATIONS = 30;
 
@@ -41,17 +41,30 @@ export const setupTest = async (req: Request, res: Response) => {
       return;
     }
 
+    const testState: EmuTestState = {
+      id: testId,
+      status: 'booting',
+      stateHistory: {},
+      screenshots: {}
+    }
+    const testWrite = await fwriteTestState(testId, testState);
+    if (!testWrite) {
+      console.error('Failed to write TEST_STATE');
+      res.status(500).send('Failed to write TEST_STATE');
+      return;
+    }
+
+    const sharedTestState = {
+      id: genId(SHARED_TEST_STATE_ID)
+    };
+
     const activeTest: ActiveTest = {
       id: testId,
       exchangeToken: genId(EXCHANGE_TOKEN_ID),
-      bootConfig,
-      sharedTestState: { id: genId(SHARED_TEST_STATE_ID) },
-      emulatorStatus: 'starting',
-      agentStatus: 'starting'
     }
 
-    const sharedTestState = await fwriteSharedTestState(testId, activeTest.sharedTestState);
-    if (!sharedTestState) {
+    const sharedWrite = await fwriteSharedTestState(testId, sharedTestState);
+    if (!sharedWrite) {
       console.error('Failed to write SHARED_STATE');
       res.status(500).send('Failed to write SHARED_STATE');
       return;
@@ -60,7 +73,7 @@ export const setupTest = async (req: Request, res: Response) => {
     req.emuSession.activeTests[testId] = activeTest;
 
     // Deploy game and agent in background
-    asyncEmulatorSetup(activeTest, req.headers.authorization!.substring(7));
+    asyncEmulatorSetup(activeTest, bootConfig.testConfig);
     asyncAgentSetup(activeTest, req.headers.authorization!.substring(7));
 
     res.send({ testId });
@@ -70,9 +83,9 @@ export const setupTest = async (req: Request, res: Response) => {
   }
 }
 
-async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
+async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestConfig) {
   try {
-    const gameContainer = await containerService.deployGame(activeTest.id, activeTest.bootConfig.testConfig);
+    const gameContainer = await containerService.deployGame(activeTest.id, testConfig);
 
     if (!gameContainer.service.uri) {
       throw new Error('Unable to find container URL');
@@ -82,34 +95,35 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, authToken: string) {
     activeTest.container = service;
     activeTest.googleToken = identityToken;
 
-    if (activeTest.emulatorStatus !== 'error') {
-      activeTest.emulatorStatus = 'running';
+    const sharedTestState = await freadEmulatorState(activeTest.id);
+    if (sharedTestState && sharedTestState.status !== 'error') {
+      await fwriteSharedTestState(
+        activeTest.id,
+        {
+          ...sharedTestState,
+          exchangeToken: activeTest.exchangeToken,
+          emulatorUri: service.uri!
+        }
+      );
+    } else {
+      throw new Error('[TEST] Aborting, shared test state set to error');
     }
-
-    await fwriteSharedTestState(
-      activeTest.id,
-      {
-        ...activeTest.sharedTestState,
-        exchangeToken: activeTest.exchangeToken,
-        emulatorUri: service.uri!
-      }
-    );
+    
   } catch (error) {
     console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
-    activeTest.emulatorStatus = 'error';
+    const emulatorState = await freadEmulatorState(activeTest.id);
+    if (emulatorState) {
+      emulatorState.status = 'error';
+      await fwriteEmulatorState(activeTest.id, emulatorState);
+    }
   }
 }
 
 async function asyncAgentSetup(activeTest: ActiveTest, authToken: string) {
   try {
     const agentJob = await containerService.runAgent(activeTest.id, authToken);
-    
-    if (activeTest.agentStatus !== 'error') {
-      activeTest.agentStatus = 'running';
-    }
   } catch (error) {
     console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
-    activeTest.agentStatus = 'error';
   }
 }
 
@@ -164,8 +178,17 @@ export const endTest = async (req: Request, res: Response) => {
     return;
   }
   await gcpService.deleteService(containerName);
-  req.emuSession.activeTests[testId].agentStatus = 'finished';
-  req.emuSession.activeTests[testId].emulatorStatus = 'finished';
+
+  // TODO: Partial updates
+  const agentState = await freadAgentState(testId);
+  if (agentState) {
+    agentState.status = 'finished';
+    await fwriteAgentState(testId, agentState);
+  }
+  const emulatorState = await freadEmulatorState(testId);
+  if (emulatorState) {
+    emulatorState.status = 'finished';
+  }
   console.log(`[TEST] Test ${testId} deleted`);
   res.status(200).send();
 }
@@ -176,19 +199,17 @@ export const getEmuTestConfigs = async (req: Request, res: Response) => {
 
 const getScreenshotsFromTest = async (activeTest: ActiveTest): Promise<Record<string, string>> => {
   let screenshots = {};
-  if (activeTest.emulatorStatus === 'running' && activeTest.agentStatus === 'running' || (activeTest.emulatorStatus === 'finished' && activeTest.agentStatus === 'finished')) {
-    const testScreenshots = await testService.getScreenshots(activeTest.id);
-    const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
-      const url = await gcpService.getSignedURL('emubench-sessions', `${activeTest.id}/ScreenShots/${screenshot}`);
-      res([screenshot, url])
-    }));
-    const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
+  const testScreenshots = await testService.getScreenshots(activeTest.id);
+  const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
+    const url = await gcpService.getSignedURL('emubench-sessions', `${activeTest.id}/ScreenShots/${screenshot}`);
+    res([screenshot, url])
+  }));
+  const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
 
-    screenshots = signedUrls.reduce((acc: Record<string, string>, url) => {
-      acc[url[0]] = url[1];
-      return acc;
-    }, {});
-  }
+  screenshots = signedUrls.reduce((acc: Record<string, string>, url) => {
+    acc[url[0]] = url[1];
+    return acc;
+  }, {});
   return screenshots;
 }
 
@@ -203,22 +224,28 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     res.status(400).send(`No active test found for id ${req.params.testId}`);
     return;
   }
-  const testId = activeTest.bootConfig.testConfig.id;
+
+  // TODO: Batch reads
+  const [testState, emulatorState, bootConfig, agentState, agentLogs] = await Promise.all([
+    freadTestState(activeTest.id),
+    freadEmulatorState(activeTest.id),
+    freadBootConfig(activeTest.id),
+    freadAgentState(activeTest.id),
+    freadAgentLogs(activeTest.id)
+  ]);
 
   const screenshots = await getScreenshotsFromTest(activeTest);
 
-  // Logs
-  const agentLogs = await freadAgentLogs(testId);
-
-  // Test state
-  const testState = await freadTestState(testId);
+  // Update screenshots in firebase if changed
+  if (Object.keys(screenshots).length !== Object.keys(testState?.screenshots || {}).length) {
+    await fwriteTestState(activeTest.id, { ...testState!, screenshots });
+  }
 
   res.send({
     testState,
-    screenshots,
+    agentState,
     agentLogs,
-    emulatorStatus: activeTest.emulatorStatus,
-    agentStatus: activeTest.agentStatus,
-    goalConfig: activeTest.bootConfig.goalConfig
+    emulatorState,
+    bootConfig,
   } as EmuActiveTestReponse);
 }

@@ -1,17 +1,7 @@
-import { ID_MAP } from '@/shared/types/firebase';
+import { DocumentWithId, FirebasePathParam, ID_MAP } from '@/shared/types/firebase';
 import { FID_LIST } from '@/shared/utils/id';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
-
-export interface FirebasePathParams {
-  collection: string;
-  docId?: string;
-};
-
-type DocumentWithId = {
-  id: string;
-  [key: string]: any;
-};
 
 export class FirebaseService {
   private db: FirebaseFirestore.Firestore;
@@ -32,7 +22,7 @@ export class FirebaseService {
     return additionalPathIds ? this.drillDownPath(ID_MAP[res](...additionalPathIds, id)) : this.drillDownPath(ID_MAP[res](id));
   }
 
-  drillDownPath(params: FirebasePathParams[]): CollectionReference | DocumentReference {
+  drillDownPath(params: FirebasePathParam[]): CollectionReference | DocumentReference {
     if (params.length === 0) {
       throw new Error('At least one path parameter is required');
     }
@@ -62,7 +52,7 @@ export class FirebaseService {
 
   // TODO: partial updates, considering created vs updated timestamps
   async write(options: {
-    pathParams: FirebasePathParams[]
+    pathParams: FirebasePathParam[]
     payload: DocumentWithId[]
   }) {
     if (options.payload.length > 1) {
@@ -89,7 +79,7 @@ export class FirebaseService {
 
   // TODO: readMany
   async read(options: {
-    pathParams: FirebasePathParams[]
+    pathParams: FirebasePathParam[]
   }) {
     if (options.pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');

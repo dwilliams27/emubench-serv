@@ -63,10 +63,22 @@ export interface EmuGoalConfig {
 
 export interface EmuTestState {
   id: string;
-  status: 'booting' | 'emulator-ready' | 'running' | 'finished';
+  status: 'booting' | 'ready' | 'running' | 'finished';
+  screenshots: Record<string, string>;
+  stateHistory: { [key: string]: { contextMemWatchValues: Record<string, string>; endStateMemWatchValues: Record<string, string>; } };
+}
+
+export interface EmuEmulatorState {
+  id: string;
+  status: 'booting' | 'emulator-ready' | 'running' | 'finished' | 'error';
   contextMemWatchValues: Record<string, string>;
   endStateMemWatchValues: Record<string, string>;
-  stateHistory: { [key: string]: Omit<EmuTestState, 'stateHistory'> };
+}
+
+export interface EmuAgentState {
+  id: string;
+  status: 'booting' | 'emulator-ready' | 'running' | 'finished' | 'error';
+  logs: EmuLogBlock[];
 }
 
 export interface EmuSharedTestState {
@@ -77,12 +89,11 @@ export interface EmuSharedTestState {
 
 export interface EmuActiveTestReponse {
   testState: EmuTestState;
-  screenshots: Record<string, string>;
+  agentState: EmuAgentState;
   agentLogs: EmuLogBlock[];
-  emulatorStatus: 'starting' | 'running' | 'finished' | 'error';
-  agentStatus: 'starting' | 'running' | 'finished' | 'error';
-  goalConfig: EmuGoalConfig;
-}
+  emulatorState: EmuEmulatorState;
+  bootConfig: EmuBootConfig;
+};
 
 export interface EmuTurn {
   iteration: number;
@@ -99,3 +110,5 @@ export const EmuLogNamespace = {
   DEV: 'DEV',
   AGENT: 'AGENT'
 };
+
+export type EmuServiceName = 'SERV' | 'AGENT' | 'UI' | 'EMULATOR' | 'UNKNOWN';
