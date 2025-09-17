@@ -77,8 +77,7 @@ export interface EmuEmulatorState {
 
 export interface EmuAgentState {
   id: string;
-  status: 'booting' | 'emulator-ready' | 'running' | 'finished' | 'error';
-  logs: EmuLogBlock[];
+  status: 'booting' | 'running' | 'finished' | 'error';
 }
 
 export interface EmuSharedTestState {
@@ -88,10 +87,10 @@ export interface EmuSharedTestState {
 }
 
 export interface EmuActiveTestReponse {
-  testState: EmuTestState;
-  agentState: EmuAgentState;
-  agentLogs: EmuLogBlock[];
-  emulatorState: EmuEmulatorState;
+  testState?: EmuTestState;
+  agentState?: EmuAgentState;
+  agentLogs?: EmuLogBlock[];
+  emulatorState?: EmuEmulatorState;
   bootConfig: EmuBootConfig;
 };
 

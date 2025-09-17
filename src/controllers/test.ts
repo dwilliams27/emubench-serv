@@ -6,7 +6,7 @@ import { EmuActiveTestReponse, EmuAgentState, EmuBootConfig, EmuEmulatorState, E
 import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
 
 const DEBUG_MAX_ITERATIONS = 30;
 
@@ -95,8 +95,9 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestCon
     activeTest.container = service;
     activeTest.googleToken = identityToken;
 
-    const sharedTestState = await freadEmulatorState(activeTest.id);
-    if (sharedTestState && sharedTestState.status !== 'error') {
+    const emulatorState = await freadEmulatorState(activeTest.id);
+    const sharedTestState = await freadSharedTestState(activeTest.id);
+    if (emulatorState && emulatorState.status !== 'error' && sharedTestState) {
       await fwriteSharedTestState(
         activeTest.id,
         {
@@ -234,11 +235,15 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     freadAgentLogs(activeTest.id)
   ]);
 
-  const screenshots = await getScreenshotsFromTest(activeTest);
-
-  // Update screenshots in firebase if changed
-  if (Object.keys(screenshots).length !== Object.keys(testState?.screenshots || {}).length) {
-    await fwriteTestState(activeTest.id, { ...testState!, screenshots });
+  let screenshots = {};
+  try {
+    screenshots = await getScreenshotsFromTest(activeTest);
+    // Update screenshots in firebase if changed
+    if (Object.keys(screenshots).length !== Object.keys(testState?.screenshots || {}).length) {
+      await fwriteTestState(activeTest.id, { ...testState!, screenshots });
+    }
+  } catch (error) {
+    console.log(`Error fetching screenshots: ${formatError(error)}`);
   }
 
   res.send({
