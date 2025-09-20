@@ -32,6 +32,8 @@ app.post('/test-orx/end', firebaseAuthMiddleware, testController.endTest);
 // For agent
 app.post('/test-orx/tests/:testId/token-exchange', firebaseAuthMiddleware, testController.attemptTokenExchange);
 app.get('/test-orx/tests/:testId/screenshots', firebaseAuthMiddleware, testController.getScreenshots);
+// debug
+app.get('/debug/trace-logs/:traceId', firebaseAuthMiddleware, testController.getTraceLogs);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

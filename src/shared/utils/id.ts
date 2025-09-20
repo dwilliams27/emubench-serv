@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 export const EXCHANGE_TOKEN_ID = 'extk';
 export const EMU_OPERATION_ID = 'emuop';
 export const CANVAS_ITEM_ID = 'cvs';
+export const REQ_ID = 'req';
 
 export const TEST_ID = 'tst';
 export const BOOT_CONFIG_ID = 'bootcfg';
@@ -11,6 +12,8 @@ export const AGENT_STATE_ID = 'astate';
 export const EMULATOR_STATE_ID = 'estate';
 export const SHARED_TEST_STATE_ID = 'ststate';
 export const LOG_BLOCK_ID = 'logb';
+export const TRACE_ID = 'trace';
+export const TRACE_LOG_ID = 'trlog';
 
 export const HISTORY_ID = 'hist';
 export const REPLAY_SLICE_ID = 'rslice';
@@ -25,6 +28,8 @@ export const FID_LIST = [
   EMULATOR_STATE_ID,
   SHARED_TEST_STATE_ID,
   LOG_BLOCK_ID,
+  TRACE_LOG_ID,
+  TRACE_ID,
 
   HISTORY_ID,
   REPLAY_SLICE_ID,

@@ -4,6 +4,7 @@ import { EmulationService } from "@/services/emulation.service";
 import { ActiveTest, EmuSession } from "@/types/session";
 import { ContainerService } from "@/services/container.service";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { EmuReqMetadata } from "@/shared/types";
 
 declare global {
   namespace Express {
@@ -14,7 +15,8 @@ declare global {
         id: string;
         email?: string;
         provider: 'firebase';
-      }
+      };
+      metadata?: EmuReqMetadata;
     }
   }
 }
