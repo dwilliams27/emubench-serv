@@ -178,12 +178,18 @@ export const endTest = async (req: Request, res: Response) => {
     // TODO: Partial updates
     const agentState = await freadAgentState(testId);
     if (agentState) {
-      agentState.status = 'finished';
+      agentState.status = agentState.status === 'error' ? agentState.status : 'finished';
       await fwriteAgentState(testId, agentState);
     }
     const emulatorState = await freadEmulatorState(testId);
     if (emulatorState) {
-      emulatorState.status = 'finished';
+      emulatorState.status = emulatorState.status === 'error' ? emulatorState.status : 'finished';
+      await fwriteEmulatorState(testId, emulatorState);
+    }
+    const testState = await freadTestState(testId);
+    if (testState) {
+      testState.status = 'finished';
+      await fwriteTestState(testId, testState);
     }
     console.log(`[TEST] Test ${testId} deleted`);
     res.status(200).send();
