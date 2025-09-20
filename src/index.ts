@@ -2,6 +2,7 @@ import express from 'express';
 import * as testController from '@/controllers/test';
 import { configDotenv } from 'dotenv';
 import { firebaseAuthMiddleware } from '@/middleware/firebase-auth.middleware';
+import { traceMiddleware } from '@/middleware/trace.middleware';
 
 configDotenv();
 
@@ -25,15 +26,15 @@ app.get('/health', (req, res) => {
 });
 
 // test-orx
-app.get('/test-orx/tests', firebaseAuthMiddleware, testController.getEmuTestConfigs);
-app.get('/test-orx/tests/:testId', firebaseAuthMiddleware, testController.getEmuTestState);
-app.post('/test-orx/setup', firebaseAuthMiddleware, testController.setupTest);
-app.post('/test-orx/end', firebaseAuthMiddleware, testController.endTest);
+app.get('/test-orx/tests', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestConfigs);
+app.get('/test-orx/tests/:testId', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestState);
+app.post('/test-orx/setup', [firebaseAuthMiddleware, traceMiddleware], testController.setupTest);
+app.post('/test-orx/end', [firebaseAuthMiddleware, traceMiddleware], testController.endTest);
 // For agent
-app.post('/test-orx/tests/:testId/token-exchange', firebaseAuthMiddleware, testController.attemptTokenExchange);
-app.get('/test-orx/tests/:testId/screenshots', firebaseAuthMiddleware, testController.getScreenshots);
+app.post('/test-orx/tests/:testId/token-exchange', [firebaseAuthMiddleware, traceMiddleware], testController.attemptTokenExchange);
+app.get('/test-orx/tests/:testId/screenshots', [firebaseAuthMiddleware, traceMiddleware], testController.getScreenshots);
 // debug
-app.get('/debug/trace-logs/:traceId', firebaseAuthMiddleware, testController.getTraceLogs);
+app.get('/debug/trace-logs/:traceId', [firebaseAuthMiddleware, traceMiddleware], testController.getTraceLogs);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 app.listen(PORT, () => {

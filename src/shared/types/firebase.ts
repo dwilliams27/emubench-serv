@@ -1,4 +1,4 @@
-import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
+import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuReqTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
 import { EmuHistoryAtom, EmuReplaySlice, EmuTestRun } from "@/shared/types/history";
 import { HISTORY_ATOM_ID, HISTORY_ID, REPLAY_SLICE_ID, TEST_ID } from "@/shared/utils/id";
 
@@ -52,7 +52,11 @@ export const ID_MAP: Record<string, (...args: any) => FirebasePathParam[]> = {
 };
 
 export interface FEmuBaseObject {
-  createdAt: FirebaseFirestore.FieldValue;
+  // TODO: Fix
+  createdAt: {
+    "_seconds": number,
+    "_nanoseconds": number
+  };
   updatedAt: FirebaseFirestore.FieldValue;
   deletedAt: FirebaseFirestore.FieldValue | undefined;
   id: string;
@@ -61,7 +65,7 @@ export interface FEmuBaseObject {
 export const EmuCollectionOwnership: { [key: string]: EmuServiceName[] } = {
   [FB_2.AGENT_STATE]: ["AGENT"],
   [FB_2.TEST_STATE]: [],
-  [FB_2.EMULATOR_STATE]: ["EMULATOR"],
+  [FB_2.EMULATOR_STATE]: [],
   [FB_2.SHARED_STATE]: [],
   [FB_2.BOOT_CONFIG]: ["SERV"],
   [FB_2.AGENT_LOGS]: [],
@@ -77,6 +81,7 @@ export interface FEmuAgentState extends FEmuBaseObject, EmuAgentState {};
 export interface FEmuSharedTestState extends FEmuBaseObject, EmuSharedTestState {};
 export interface FEmuLogBlock extends FEmuBaseObject, EmuLogBlock {};
 export interface FEmuTrace extends FEmuBaseObject, EmuTrace {};
+export interface FEmuReqTraceLog extends FEmuBaseObject, EmuReqTraceLog {};
 
 export interface FEmuHistoryAtom extends FEmuBaseObject, EmuHistoryAtom {};
 export interface FEmuReplaySlice extends FEmuBaseObject, EmuReplaySlice {};

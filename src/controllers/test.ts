@@ -245,7 +245,6 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       }
     } catch (error) {
       console.log(`Error fetching screenshots: ${formatError(error)}`);
-      throw createEmuError('Error fetching screenshots');
     }
 
     const response: EmuActiveTestReponse = {

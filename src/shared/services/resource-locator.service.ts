@@ -1,6 +1,6 @@
 import { firebaseService } from "@/shared/services/firebase.service";
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuReqTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState } from "@/shared/types";
-import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FirebasePathParam } from "@/shared/types/firebase";
+import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuBaseObject, FEmuLogBlock, FEmuReqTraceLog, FirebasePathParam } from "@/shared/types/firebase";
 import { formatError } from "@/shared/utils/error";
 
 const currentService: EmuServiceName = (process.env.SERVICE_NAME as EmuServiceName) || 'UNKNOWN';
@@ -11,6 +11,14 @@ export interface EmuGrabOptions {
   forceCache?: boolean;
   forceReadThrough?: boolean;
 };
+
+function sortResultsByCreatedAt(results: FEmuBaseObject[], mostRecentFirst: boolean = false) {
+  return results.sort((a, b) => {
+    const aTime = a.createdAt._seconds * 1000 + a.createdAt._nanoseconds / 1000000;
+    const bTime = b.createdAt._seconds * 1000 + b.createdAt._nanoseconds / 1000000;
+    return mostRecentFirst ? bTime - aTime : aTime - bTime;
+  }) as any[];
+}
 
 function generateCacheKey(pathParams: FirebasePathParam[]) {
   return pathParams.map((param) => `${param.collection}${param.docId}`).join(':');
@@ -38,13 +46,13 @@ function pathParamsToString(pathParams: FirebasePathParam[]) {
 
 async function readObjectFromFirebase<T>({ pathParams }: {
   pathParams: FirebasePathParam[]
-}): Promise<T | null> {
+}): Promise<T[] | null> {
   const objectPath = pathParamsToString(pathParams);
   if (pathParams[-1]?.docId) {
     const cacheKey = generateCacheKey(pathParams);
     if (shouldUseCache(pathParams[-1]?.collection) && FB_CACHE[cacheKey]) {
       console.log(`[RecL] Reading object from cache for ${objectPath}`);
-      return FB_CACHE[cacheKey] as T;
+      return FB_CACHE[cacheKey] as T[];
     }
   }
   
@@ -53,7 +61,7 @@ async function readObjectFromFirebase<T>({ pathParams }: {
     const objects = await firebaseService.read({
       pathParams,
     });
-    return objects[0] as unknown as T;
+    return objects as unknown as T[];
   } catch (error) {
     console.error(`[RecL] Error reading ${objectPath}: ${formatError(error)}`);
     return null;
@@ -86,12 +94,13 @@ async function writeObjectToFirebase({ pathParams, payload }: {
 }
 
 export async function freadBootConfig(testId: string): Promise<EmuBootConfig | null> {
-  return readObjectFromFirebase<EmuBootConfig>({
+  const result = await readObjectFromFirebase<EmuBootConfig>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.BOOT_CONFIG }
     ]
   });
+  return result ? result[0] : null;
 }
 export async function fwriteBootConfig(testId: string, bootConfig: EmuBootConfig) {
   return writeObjectToFirebase({
@@ -105,12 +114,13 @@ export async function fwriteBootConfig(testId: string, bootConfig: EmuBootConfig
 
 
 export async function freadEmulatorState(testId: string): Promise<EmuEmulatorState | null> {
-  return readObjectFromFirebase<EmuEmulatorState>({
+  const result = await readObjectFromFirebase<EmuEmulatorState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.EMULATOR_STATE }
     ],
   });
+  return result ? result[0] : null;
 }
 export async function fwriteEmulatorState(testId: string, emulatorState: EmuEmulatorState) {
   return writeObjectToFirebase({
@@ -124,12 +134,13 @@ export async function fwriteEmulatorState(testId: string, emulatorState: EmuEmul
 
 
 export async function freadAgentState(testId: string): Promise<EmuAgentState | null> {
-  return readObjectFromFirebase<EmuAgentState>({
+  const result = await readObjectFromFirebase<EmuAgentState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.AGENT_STATE }
     ],
   });
+  return result ? result[0] : null;
 }
 export async function fwriteAgentState(testId: string, agentState: EmuAgentState) {
   return writeObjectToFirebase({
@@ -143,12 +154,13 @@ export async function fwriteAgentState(testId: string, agentState: EmuAgentState
 
 
 export async function freadTestState(testId: string): Promise<EmuTestState | null> {
-  return readObjectFromFirebase<EmuTestState>({
+  const result = await  readObjectFromFirebase<EmuTestState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.TEST_STATE }
     ],
   });
+  return result ? result[0] : null;
 }
 export async function fwriteTestState(testId: string, testState: EmuTestState) {
   return writeObjectToFirebase({
@@ -162,12 +174,13 @@ export async function fwriteTestState(testId: string, testState: EmuTestState) {
 
 
 export async function freadSharedTestState(testId: string): Promise<EmuSharedTestState | null> {
-  return readObjectFromFirebase<EmuSharedTestState>({
+  const result = await  readObjectFromFirebase<EmuSharedTestState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.SHARED_STATE }
     ],
   });
+  return result ? result[0] : null;
 }
 export async function fwriteSharedTestState(testId: string, sharedState: EmuSharedTestState) {
   return writeObjectToFirebase({
@@ -181,12 +194,13 @@ export async function fwriteSharedTestState(testId: string, sharedState: EmuShar
 
 
 export async function freadAgentLogs(testId: string): Promise<EmuLogBlock[] | null> {
-  return readObjectFromFirebase<EmuLogBlock[]>({
+  const result = await readObjectFromFirebase<FEmuLogBlock>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.AGENT_LOGS }
     ],
   });
+  return result ? sortResultsByCreatedAt(result, true) : null;
 }
 export async function fwriteAgentLogs(testId: string, logs: EmuLogBlock[]) {
   return writeObjectToFirebase({
@@ -200,12 +214,13 @@ export async function fwriteAgentLogs(testId: string, logs: EmuLogBlock[]) {
 
 
 export async function freadDevLogs(testId: string): Promise<EmuLogBlock[] | null> {
-  return readObjectFromFirebase<EmuLogBlock[]>({
+  const result = await readObjectFromFirebase<FEmuLogBlock>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.DEV_LOGS },
     ],
   });
+  return result ? sortResultsByCreatedAt(result, true) : null;
 }
 export async function fwriteDevLogs(testId: string, logs: EmuLogBlock[]) {
   return writeObjectToFirebase({
@@ -217,13 +232,15 @@ export async function fwriteDevLogs(testId: string, logs: EmuLogBlock[]) {
   });
 }
 
+
 export async function freadTraceLogs(traceId: string): Promise<EmuReqTraceLog[] | null> {
-  return readObjectFromFirebase<EmuReqTraceLog[]>({
+  const result = await  readObjectFromFirebase<FEmuReqTraceLog>({
     pathParams: [
       { collection: FB_1.TRACES, docId: traceId },
       { collection: FB_2.TRACE_LOGS,  }
     ],
   });
+  return result ? sortResultsByCreatedAt(result, true) : null;
 }
 export async function fwriteTraceLogs(traceId: string, logs: EmuReqTraceLog[]) {
   return writeObjectToFirebase({
