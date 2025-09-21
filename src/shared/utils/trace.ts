@@ -1,12 +1,12 @@
 import { fwriteTraceLogs } from "@/shared/services/resource-locator.service";
-import { EmuError, EmuReqTraceLog, EmuReqTraceMetadata } from "@/shared/types";
+import { EmuError, EmuTraceLog, EmuReqTraceMetadata } from "@/shared/types";
 
 export async function fwriteFormattedTraceLog(message: string, metadata?: EmuReqTraceMetadata, level: 'info' | 'error' = 'info') {
   if (!metadata) {
     return;
   }
   const timestamp = (new Date()).toISOString();
-  const log: EmuReqTraceLog = {
+  const log: EmuTraceLog = {
     timestamp: timestamp,
     level,
     message: `${level}:${metadata.service}:${metadata.reqId} - ${message}`,

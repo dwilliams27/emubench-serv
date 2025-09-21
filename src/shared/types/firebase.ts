@@ -1,4 +1,4 @@
-import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuReqTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
+import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
 import { EmuHistoryAtom, EmuReplaySlice, EmuTestRun } from "@/shared/types/history";
 import { HISTORY_ATOM_ID, HISTORY_ID, REPLAY_SLICE_ID, TEST_ID } from "@/shared/utils/id";
 
@@ -80,8 +80,8 @@ export interface FEmuEmulatorState extends FEmuBaseObject, EmuEmulatorState {};
 export interface FEmuAgentState extends FEmuBaseObject, EmuAgentState {};
 export interface FEmuSharedTestState extends FEmuBaseObject, EmuSharedTestState {};
 export interface FEmuLogBlock extends FEmuBaseObject, EmuLogBlock {};
-export interface FEmuTrace extends FEmuBaseObject, EmuTrace {};
-export interface FEmuReqTraceLog extends FEmuBaseObject, EmuReqTraceLog {};
+export interface FEmuTrace extends FEmuBaseObject, Omit<EmuTrace, "logs"> {};
+export interface FEmuTraceLog extends FEmuBaseObject, EmuTraceLog {};
 
 export interface FEmuHistoryAtom extends FEmuBaseObject, EmuHistoryAtom {};
 export interface FEmuReplaySlice extends FEmuBaseObject, EmuReplaySlice {};

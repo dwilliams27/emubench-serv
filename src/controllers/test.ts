@@ -175,22 +175,19 @@ export const endTest = async (req: Request, res: Response) => {
     }
     await gcpService.deleteService(containerName);
 
-    // TODO: Partial updates
-    const agentState = await freadAgentState(testId);
+    const [agentState, emulatorState] = await Promise.all([
+      freadAgentState(testId),
+      freadEmulatorState(testId),
+    ]);
     if (agentState) {
       agentState.status = agentState.status === 'error' ? agentState.status : 'finished';
       await fwriteAgentState(testId, agentState);
     }
-    const emulatorState = await freadEmulatorState(testId);
     if (emulatorState) {
       emulatorState.status = emulatorState.status === 'error' ? emulatorState.status : 'finished';
       await fwriteEmulatorState(testId, emulatorState);
     }
-    const testState = await freadTestState(testId);
-    if (testState) {
-      testState.status = 'finished';
-      await fwriteTestState(testId, testState);
-    }
+    await fwriteTestState(testId, { id: testId, status: 'finished' }, { update: true });
     console.log(`[TEST] Test ${testId} deleted`);
     res.status(200).send();
   } catch (error) {

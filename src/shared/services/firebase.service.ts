@@ -1,4 +1,5 @@
 import { DocumentWithId, FirebasePathParam, ID_MAP } from '@/shared/types/firebase';
+import { EmuWriteOptions } from '@/shared/types/resource-locator';
 import { FID_LIST } from '@/shared/utils/id';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
@@ -50,36 +51,46 @@ export class FirebaseService {
     return ref;
   }
 
-  // TODO: partial updates, considering created vs updated timestamps
-  async write(options: {
-    pathParams: FirebasePathParam[]
-    payload: DocumentWithId[]
-  }) {
-    if (options.payload.length > 1) {
+  async write(
+    pathParams: FirebasePathParam[],
+    payload: DocumentWithId[],
+    options: EmuWriteOptions
+  ) {
+    if (payload.length > 1) {
       throw Error('Can only write one object to a specific file');
     }
-    if (options.pathParams.length < 1) {
+    if (pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
     }
     const batch = this.db.batch();
 
-    options.payload.forEach(item => {
-      let ref = this.drillDownPath(options.pathParams);
+    payload.forEach(item => {
+      let ref = this.drillDownPath(pathParams);
       if (ref instanceof CollectionReference) {
         ref = ref.doc(item.id);
       }
-      batch.set(ref, {
-        ...item,
-        createdAt: FieldValue.serverTimestamp()
-      });
+      
+      if (options.update) {
+        const { id, ...updateData } = item;
+        batch.update(ref, {
+          ...updateData,
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      } else {
+        batch.set(ref, {
+          ...item,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
+        });
+      }
     });
 
     await batch.commit();
   }
 
-  // TODO: readMany
   async read(options: {
-    pathParams: FirebasePathParam[]
+    pathParams: FirebasePathParam[],
+    where?: [string, FirebaseFirestore.WhereFilterOp, any][]
   }) {
     if (options.pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
@@ -89,18 +100,33 @@ export class FirebaseService {
     console.log(`[Firebase] Reading from ${pathString}`);
 
     const ref = this.drillDownPath(options.pathParams);
-    const result = await ref.get();
-
-    const documentsWithId = 'docs' in result ? result.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) : [{
-      id: result.id,
-      ...result.data()
-    }];
-
-    console.log(`[Firebase] Got document(s): ${JSON.stringify(documentsWithId)}`)
-    return documentsWithId;
+    if (ref instanceof CollectionReference) {
+      let query: FirebaseFirestore.Query = ref;
+      if (options.where) {
+        options.where.forEach(condition => {
+          query = query.where(...condition);
+        });
+      }
+      const querySnapshot = await query.get();
+      const documentsWithId = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      console.log(`[Firebase] Got document(s): ${JSON.stringify(documentsWithId)}`)
+      return documentsWithId;
+    } else {
+      const doc = await ref.get();
+      if (!doc.exists) {
+        console.log(`[Firebase] No document found at ${pathString}`);
+        return [];
+      }
+      const documentWithId = {
+        id: doc.id,
+        ...doc.data()
+      };
+      console.log(`[Firebase] Got document: ${JSON.stringify(documentWithId)}`);
+      return [documentWithId];
+    }
   }
 }
 
