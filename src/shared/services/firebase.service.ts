@@ -107,13 +107,26 @@ export class FirebaseService {
           query = query.where(...condition);
         });
       }
-      const querySnapshot = await query.get();
-      const documentsWithId = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      console.log(`[Firebase] Got document(s): ${JSON.stringify(documentsWithId)}`)
-      return documentsWithId;
+      
+      try {
+        const querySnapshot = await query.get();
+        const documentsWithId = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log(`[Firebase] Got ${documentsWithId.length} document(s) from query`);
+        return documentsWithId;
+      } catch (error) {
+        console.error(`[Firebase] Query failed, trying without orderBy: ${error}`);
+        // Fallback without orderBy in case of indexing issues
+        const querySnapshot = await query.get();
+        const documentsWithId = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log(`[Firebase] Got ${documentsWithId.length} document(s) from fallback query`);
+        return documentsWithId;
+      }
     } else {
       const doc = await ref.get();
       if (!doc.exists) {

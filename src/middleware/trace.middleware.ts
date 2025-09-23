@@ -1,3 +1,4 @@
+import { fwriteNewTrace } from '@/shared/services/resource-locator.service';
 import { EMU_TRACE_HEADER } from '@/shared/types';
 import { genId, REQ_ID, TRACE_ID } from '@/shared/utils/id';
 import { Request, Response, NextFunction } from 'express';
@@ -9,12 +10,13 @@ export async function traceMiddleware(
 ): Promise<void> {
   const unvalidatedTraceId = req.headers[EMU_TRACE_HEADER] || genId(TRACE_ID);
   if (typeof unvalidatedTraceId === 'string' && unvalidatedTraceId.length > 0 && unvalidatedTraceId.length < 100) {
-    const traceId = unvalidatedTraceId;
+    const validTraceId = unvalidatedTraceId;
     req.metadata = {
       trace: {
-        id: traceId,
+        id: validTraceId,
         reqId: genId(REQ_ID),
         service: 'SERV',
+        testId: req.params.testId || req.body.testId || undefined,
       }
     };
   }

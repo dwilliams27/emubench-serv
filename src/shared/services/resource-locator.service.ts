@@ -263,6 +263,7 @@ export async function fwriteTraceLogs(traceId: string, logs: DocumentWithId[], o
 
 
 export async function freadTracesByTestId(testId: string): Promise<EmuTrace[] | null> {
+  console.log(`[RecL] Querying traces for testId: ${testId}`);
   const traces = await readObjectFromFirebase<FEmuTrace>({
     pathParams: [
       { collection: FB_1.TRACES },
@@ -276,11 +277,13 @@ export async function freadTracesByTestId(testId: string): Promise<EmuTrace[] | 
       logs: logs || []
     };
   }));
+  console.log(`[RecL] Returning ${results.length} processed traces for testId ${testId}`);
   return results;
 }
 
 
 export async function fwriteNewTrace(traceId: string, testId: string, options: EmuWriteOptions = {}) {
+  console.log(`[RecL] Writing new trace: traceId=${traceId}, testId=${testId}`);
   return writeObjectToFirebase({
     pathParams: [
       { collection: FB_1.TRACES, docId: traceId },

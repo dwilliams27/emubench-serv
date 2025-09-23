@@ -3,10 +3,10 @@ import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
 import { EmuActiveTestReponse, EmuBootConfig, EmuError, EmuGetTraceLogsResponse, EmuReqTraceMetadata, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID } from "@/shared/utils/id";
+import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, freadTraceLogs, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
 import { fwriteErrorToTraceLog, fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
 
@@ -15,7 +15,8 @@ const DEBUG_MAX_ITERATIONS = 50;
 export const setupTest = async (req: Request, res: Response) => {
   const testId = genId(TEST_ID);
   console.log(`[TEST] Setting up test ${testId}`);
-  fwriteFormattedTraceLog(`Setting up test ${testId}`, req.metadata?.trace);
+  if (req.metadata?.trace) req.metadata.trace.testId = testId;
+  await fwriteFormattedTraceLog(`Setting up test ${testId}`, req.metadata?.trace);
 
   try {
     const bootConfig: EmuBootConfig = {
@@ -70,6 +71,7 @@ export const setupTest = async (req: Request, res: Response) => {
     asyncEmulatorSetup(activeTest, bootConfig.testConfig, req.metadata?.trace);
     asyncAgentSetup(activeTest, req.headers.authorization!.substring(7), req.metadata?.trace);
 
+    await fwriteFormattedTraceLog(`Test ${testId} initialized`, req.metadata?.trace);
     res.send({ testId });
   } catch (error) {
     console.error(`Error setting up test: ${formatError(error)}`);
@@ -84,6 +86,7 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestCon
     if (!gameContainer.service.uri) {
       throw new Error('Unable to find container URL');
     }
+    fwriteFormattedTraceLog(`Emulator container initialized`, trace);
     
     const { identityToken, service } = gameContainer;
     activeTest.container = service;
@@ -117,6 +120,7 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestCon
 async function asyncAgentSetup(activeTest: ActiveTest, authToken: string, trace?: EmuReqTraceMetadata) {
   try {
     const agentJob = await containerService.runAgent(activeTest.id, authToken);
+    fwriteFormattedTraceLog(`Agent successfully initialized`, trace);
   } catch (error) {
     fwriteErrorToTraceLog(error, trace);
     console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
@@ -139,6 +143,7 @@ export const attemptTokenExchange = async (req: Request, res: Response) => {
     if (activeTest.exchangeToken !== req.body.exchangeToken) {
       throw createEmuError('Invalid exchangeToken');
     }
+    fwriteFormattedTraceLog(`Emulator token exchange success`, req.metadata?.trace);
     res.send({ token: activeTest.googleToken });
   } catch (error) {
     fhandleErrorResponse(error, req, res);
@@ -164,8 +169,9 @@ export const getScreenshots = async (req: Request, res: Response) => {
 
 export const endTest = async (req: Request, res: Response) => {
   console.log('[TEST] Ending test');
+  const testId = req.body.testId;
+  fwriteFormattedTraceLog(`End test recieved`, req.metadata?.trace);
   try {
-    const testId = req.body.testId;
     if (!testId || !req.emuSession.activeTests[testId]) {
       throw createEmuError('Must pass valid testId');
     }
@@ -189,6 +195,7 @@ export const endTest = async (req: Request, res: Response) => {
     }
     await fwriteTestState(testId, { id: testId, status: 'finished' }, { update: true });
     console.log(`[TEST] Test ${testId} deleted`);
+    fwriteFormattedTraceLog(`Test successfuly ended`, req.metadata?.trace);
     res.status(200).send();
   } catch (error) {
     fhandleErrorResponse(error, req, res);
@@ -269,9 +276,20 @@ export const getTraceLogs = async (req: Request, res: Response) => {
     if (!req.params.traceId) {
       throw createEmuError('Must specify traceId');
     }
-    const logs = await freadTraceLogs(req.params.traceId);
-    const response: EmuGetTraceLogsResponse = { logs: logs || [] };
-    res.send(response);
+    const id = req.params.traceId;
+    if (id.startsWith(TRACE_ID)) {
+      const logs = await freadTraceLogs(req.params.traceId);
+      const response: EmuGetTraceLogsResponse = { traces: [{ id, testId: 'NULL', logs: logs || [] }] };
+      res.send(response);
+    } else if(id.startsWith(TEST_ID)) {
+      // Get traceId from testId
+      const traces = await freadTracesByTestId(id);
+      if (!traces || traces.length === 0) {
+        throw createEmuError(`No traces found for testId ${id}`);
+      }
+      const response: EmuGetTraceLogsResponse = { traces };
+      res.send(response);
+    }
   } catch (error) {
     fhandleErrorResponse(error, req, res);
   }

@@ -95,7 +95,7 @@ export interface EmuActiveTestReponse {
 };
 
 export interface EmuGetTraceLogsResponse {
-  logs: EmuTraceLog[];
+  traces: EmuTrace[];
 };
 
 export interface EmuTurn {
@@ -124,6 +124,7 @@ export interface EmuReqTraceMetadata {
   id: string;
   reqId: string;
   service: EmuServiceName;
+  testId?: string;
 };
 
 export interface EmuTrace {
