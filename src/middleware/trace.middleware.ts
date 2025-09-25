@@ -1,4 +1,3 @@
-import { fwriteNewTrace } from '@/shared/services/resource-locator.service';
 import { EMU_TRACE_HEADER } from '@/shared/types';
 import { genId, REQ_ID, TRACE_ID } from '@/shared/utils/id';
 import { Request, Response, NextFunction } from 'express';
@@ -16,7 +15,7 @@ export async function traceMiddleware(
         id: validTraceId,
         reqId: genId(REQ_ID),
         service: 'SERV',
-        testId: req.params.testId || req.body.testId || undefined,
+        testId: req.params?.testId || req.body?.testId || undefined,
       }
     };
   }

@@ -3,7 +3,7 @@ import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
 import { EmuActiveTestReponse, EmuBootConfig, EmuError, EmuGetTraceLogsResponse, EmuReqTraceMetadata, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
+import { AGENT_STATE_ID, BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
 import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
@@ -120,7 +120,8 @@ async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestCon
 async function asyncAgentSetup(activeTest: ActiveTest, authToken: string, trace?: EmuReqTraceMetadata) {
   try {
     const agentJob = await containerService.runAgent(activeTest.id, authToken);
-    fwriteFormattedTraceLog(`Agent successfully initialized`, trace);
+    fwriteAgentState(activeTest.id, { id: genId(AGENT_STATE_ID), status: 'booting' as const });
+    fwriteFormattedTraceLog(`Agent creation request sent`, trace);
   } catch (error) {
     fwriteErrorToTraceLog(error, trace);
     console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
@@ -143,7 +144,7 @@ export const attemptTokenExchange = async (req: Request, res: Response) => {
     if (activeTest.exchangeToken !== req.body.exchangeToken) {
       throw createEmuError('Invalid exchangeToken');
     }
-    fwriteFormattedTraceLog(`Emulator token exchange success`, req.metadata?.trace);
+    fwriteFormattedTraceLog(`Agent token exchange success`, req.metadata?.trace);
     res.send({ token: activeTest.googleToken });
   } catch (error) {
     fhandleErrorResponse(error, req, res);

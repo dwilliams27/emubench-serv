@@ -63,7 +63,7 @@ export interface FEmuBaseObject {
 };
 
 export const EmuCollectionOwnership: { [key: string]: EmuServiceName[] } = {
-  [FB_2.AGENT_STATE]: ["AGENT"],
+  [FB_2.AGENT_STATE]: [],
   [FB_2.TEST_STATE]: [],
   [FB_2.EMULATOR_STATE]: [],
   [FB_2.SHARED_STATE]: [],
