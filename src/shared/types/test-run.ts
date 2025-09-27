@@ -1,5 +1,5 @@
-import { EmuCondition } from "@/shared/conditions/types";
-import { EmuBootConfig, EmuLogBlock } from "@/shared/types";
+import { EmuCondition, EmuConditionPrimitiveResult } from "@/shared/conditions/types";
+import { EmuBootConfig, EmuLogItem } from "@/shared/types";
 
 export interface EmuTestRun {
   id: string;
@@ -20,13 +20,14 @@ export interface EmuHistoryAtom {
   id: string;
   eventTimestamp: Date;
   type: 'screenshot' | 'log' | 'memory-watch';
-  screenshot?: string;
-  log?: EmuLogBlock;
+  screenshotName?: string;
+  log?: EmuLogItem;
   memoryWatch?: Record<string, any>;
 };
 
 export interface EmuTestResult {
   emuCondition: EmuCondition;
   conditionResult: 'passed' | 'failed' | 'error';
-  conditionNumericalResult?: number;
+  conditionPrimitiveResult: EmuConditionPrimitiveResult;
+  errorDetails: string;
 }

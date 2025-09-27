@@ -39,7 +39,6 @@ export interface EmuConditionOperation {
   name: string;
   hasLeftOperand?: boolean;
   hasRightOperand?: boolean;
-  func: EmuConditionOperationFunction;
 }
 
 export interface EmuLinkedExpressionPart {

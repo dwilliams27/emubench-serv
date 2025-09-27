@@ -16,7 +16,7 @@ export const TRACE_ID = 'trace';
 export const TRACE_LOG_ID = 'trlog';
 
 export const HISTORY_ID = 'hist';
-export const REPLAY_SLICE_ID = 'rslice';
+export const HISTORY_SLICE_ID = 'hslice';
 export const HISTORY_ATOM_ID = 'hatom';
 
 // Ids used for firebase docs
@@ -30,10 +30,6 @@ export const FID_LIST = [
   LOG_BLOCK_ID,
   TRACE_LOG_ID,
   TRACE_ID,
-
-  HISTORY_ID,
-  REPLAY_SLICE_ID,
-  HISTORY_ATOM_ID,
 ];
 
 export function genId(prefix: string): string {

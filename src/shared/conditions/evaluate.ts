@@ -1,5 +1,5 @@
 import { hexToAscii, hexToFloat, hexToInt, hexToUint } from "@/shared/conditions/helpers";
-import { emuLeftIdentityOperationFactory } from "@/shared/conditions/operations";
+import { emuLeftIdentityOperationFactory, EmuOperationNameToFunctionMap } from "@/shared/conditions/operations";
 import type { EmuCondition, EmuConditionPrimitiveResult, EmuConditionInputSet, EmuConditionOperand, EmuConditionInput, EmuLinkedExpressionPart } from "@/shared/conditions/types";
 
 export function emuFlattenCondition(condition?: EmuCondition): EmuConditionOperand[] {
@@ -54,7 +54,7 @@ export function emuEvaluateOperand(inputs: EmuConditionInputSet, operand: EmuCon
   if (operand.conditionPart) {
     const lhsResult = operand.conditionPart.lhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.lhs) } : undefined;
     const rhsResult = operand.conditionPart.rhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.rhs) } : undefined;
-    return operand.conditionPart.operation.func(inputs, { lhs: lhsResult, rhs: rhsResult });
+    return EmuOperationNameToFunctionMap[operand.conditionPart.operation.name]?.(inputs, { lhs: lhsResult, rhs: rhsResult });
   } else if (operand.primitive) {
     return operand.primitive;
   } else if (operand.input) {
