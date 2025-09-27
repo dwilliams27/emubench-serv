@@ -1,6 +1,5 @@
-import { DocumentWithId, FirebasePathParam, ID_MAP } from '@/shared/types/firebase';
+import { DocumentWithId, FirebasePathParam } from '@/shared/types/firebase';
 import { EmuWriteOptions } from '@/shared/types/resource-locator';
-import { FID_LIST } from '@/shared/utils/id';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
 
@@ -12,15 +11,6 @@ export class FirebaseService {
       initializeApp();
     }
     this.db = getFirestore();
-  }
-
-  getDocumentByRef(id: string, additionalPathIds?: string[]) {
-    const res = FID_LIST.find(prefix => id.startsWith(prefix));
-    if (!res) {
-      throw new Error(`Invalid ID prefix for ${id}`);
-    }
-
-    return additionalPathIds ? this.drillDownPath(ID_MAP[res](...additionalPathIds, id)) : this.drillDownPath(ID_MAP[res](id));
   }
 
   drillDownPath(params: FirebasePathParam[]): CollectionReference | DocumentReference {

@@ -26,7 +26,6 @@ app.get('/health', (req, res) => {
 });
 
 // test-orx
-app.get('/test-orx/tests', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestConfigs);
 app.get('/test-orx/tests/:testId', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestState);
 app.post('/test-orx/setup', [firebaseAuthMiddleware, traceMiddleware], testController.setupTest);
 app.post('/test-orx/end', [firebaseAuthMiddleware, traceMiddleware], testController.endTest);

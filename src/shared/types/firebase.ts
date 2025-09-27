@@ -1,6 +1,5 @@
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
-import { EmuHistoryAtom, EmuReplaySlice, EmuTestRun } from "@/shared/types/history";
-import { HISTORY_ATOM_ID, HISTORY_ID, REPLAY_SLICE_ID, TEST_ID } from "@/shared/utils/id";
+import { EmuTestRun } from "@/shared/types/test-run";
 
 export type DocumentWithId = {
   id: string;
@@ -15,7 +14,7 @@ export interface FirebasePathParam {
 // Top level firebase collections
 export const FB_1 = {
   SESSIONS: 'SESSIONS',
-  HISTORY: 'HISTORY',
+  TEST_RUNS: 'TEST_RUNS',
   TRACES: 'TRACES',
 } as const;
 
@@ -29,27 +28,9 @@ export const FB_2 = {
   AGENT_LOGS: 'AGENT_LOGS',
   DEV_LOGS: 'DEV_LOGS',
 
-  // HISTORY
-  HISTORY_ATOMS: 'HISTORY_ATOMS',
-  REPLAY_SLICES: 'REPLAY_SLICES',
-  TEST_RUN: 'TEST_RUN',
-
   // TRACES
   TRACE_LOGS: 'TRACE_LOGS',
 } as const;
-
-export const ID_MAP: Record<string, (...args: any) => FirebasePathParam[]> = {
- [TEST_ID]: (testId: string) => [{ collection: FB_1.SESSIONS, docId: testId }],
- [HISTORY_ID]: (historyId: string) => [{ collection: FB_1.HISTORY, docId: historyId }],
- [HISTORY_ATOM_ID]: (historyId: string, atomId: string) => [
-   { collection: FB_1.HISTORY, docId: historyId },
-   { collection: FB_2.HISTORY_ATOMS, docId: atomId }
- ],
- [REPLAY_SLICE_ID]: (historyId: string, sliceId: string) => [
-    { collection: FB_1.HISTORY, docId: historyId },
-    { collection: FB_2.REPLAY_SLICES, docId: sliceId }
-  ],
-};
 
 export interface FEmuBaseObject {
   // TODO: Fix
@@ -83,6 +64,4 @@ export interface FEmuLogBlock extends FEmuBaseObject, EmuLogBlock {};
 export interface FEmuTrace extends FEmuBaseObject, Omit<EmuTrace, "logs"> {};
 export interface FEmuTraceLog extends FEmuBaseObject, EmuTraceLog {};
 
-export interface FEmuHistoryAtom extends FEmuBaseObject, EmuHistoryAtom {};
-export interface FEmuReplaySlice extends FEmuBaseObject, EmuReplaySlice {};
 export interface FEmuTestRun extends FEmuBaseObject, EmuTestRun {};

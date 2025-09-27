@@ -1,23 +1,20 @@
+import { EmuCondition } from "@/shared/conditions/types";
 import { EmuBootConfig, EmuLogBlock } from "@/shared/types";
-
-// Top level firebase item per acct
-export interface EmuHistory {
-
-}
 
 export interface EmuTestRun {
   id: string;
-  replay: EmuReplaySlice[];
+  history: EmuHistorySlice[];
   bootConfig: EmuBootConfig;
-  // TODO: Fill
-}
+  result: EmuTestResult;
+};
 
-export interface EmuReplaySlice {
+export interface EmuHistorySlice {
   id: string;
+  turn: number;
   images: EmuHistoryAtom[];
   agentLogs: EmuHistoryAtom[];
   memoryWatches: EmuHistoryAtom[];
-}
+};
 
 export interface EmuHistoryAtom {
   id: string;
@@ -26,4 +23,10 @@ export interface EmuHistoryAtom {
   screenshot?: string;
   log?: EmuLogBlock;
   memoryWatch?: Record<string, any>;
+};
+
+export interface EmuTestResult {
+  emuCondition: EmuCondition;
+  conditionResult: 'passed' | 'failed' | 'error';
+  conditionNumericalResult?: number;
 }

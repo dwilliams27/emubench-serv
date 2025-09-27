@@ -1,6 +1,7 @@
 import { firebaseService } from "@/shared/services/firebase.service";
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
-import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuBaseObject, FEmuLogBlock, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
+import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuLogBlock, FEmuSharedTestState, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
+import { EmuTestRun } from "@/shared/types/test-run";
 import { EmuWriteOptions } from "@/shared/types/resource-locator";
 import { formatError } from "@/shared/utils/error";
 
@@ -45,7 +46,7 @@ function pathParamsToString(pathParams: FirebasePathParam[]) {
   return pathParams.map(p => p.docId ? `${p.collection}/${p.docId}` : p.collection).join('/')
 };
 
-async function readObjectFromFirebase<T>({ pathParams, where }: {
+async function readObjectFromFirebase<T extends FEmuBaseObject>({ pathParams, where }: {
   pathParams: FirebasePathParam[],
   where?: [string, FirebaseFirestore.WhereFilterOp, any][]
 }): Promise<T[] | null> {
@@ -95,7 +96,7 @@ async function writeObjectToFirebase({ pathParams, payload, options }: {
 }
 
 export async function freadBootConfig(testId: string): Promise<EmuBootConfig | null> {
-  const result = await readObjectFromFirebase<EmuBootConfig>({
+  const result = await readObjectFromFirebase<FEmuBootConfig>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.BOOT_CONFIG }
@@ -116,7 +117,7 @@ export async function fwriteBootConfig(testId: string, bootConfig: DocumentWithI
 
 
 export async function freadEmulatorState(testId: string): Promise<EmuEmulatorState | null> {
-  const result = await readObjectFromFirebase<EmuEmulatorState>({
+  const result = await readObjectFromFirebase<FEmuEmulatorState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.EMULATOR_STATE }
@@ -137,7 +138,7 @@ export async function fwriteEmulatorState(testId: string, emulatorState: Documen
 
 
 export async function freadAgentState(testId: string): Promise<EmuAgentState | null> {
-  const result = await readObjectFromFirebase<EmuAgentState>({
+  const result = await readObjectFromFirebase<FEmuAgentState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.AGENT_STATE }
@@ -158,7 +159,7 @@ export async function fwriteAgentState(testId: string, agentState: DocumentWithI
 
 
 export async function freadTestState(testId: string): Promise<EmuTestState | null> {
-  const result = await  readObjectFromFirebase<EmuTestState>({
+  const result = await  readObjectFromFirebase<FEmuTestState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.TEST_STATE }
@@ -179,7 +180,7 @@ export async function fwriteTestState(testId: string, testState: DocumentWithId,
 
 
 export async function freadSharedTestState(testId: string): Promise<EmuSharedTestState | null> {
-  const result = await  readObjectFromFirebase<EmuSharedTestState>({
+  const result = await  readObjectFromFirebase<FEmuSharedTestState>({
     pathParams: [
       { collection: FB_1.SESSIONS, docId: testId },
       { collection: FB_2.SHARED_STATE }
@@ -289,6 +290,24 @@ export async function fwriteNewTrace(traceId: string, testId: string, options: E
       { collection: FB_1.TRACES, docId: traceId },
     ],
     payload: [{ id: traceId, testId }],
+    options
+  });
+}
+
+export async function freadTestRun(testId: string): Promise<EmuTestRun[] | null> {
+  const result = await readObjectFromFirebase<FEmuTestRun>({
+    pathParams: [
+      { collection: FB_1.TEST_RUNS, docId: testId },
+    ],
+  });
+  return result;
+}
+export async function fwriteTestRun(testRuns: EmuTestRun[], options: EmuWriteOptions = {}) {
+  return writeObjectToFirebase({
+    pathParams: [
+      { collection: FB_1.TEST_RUNS }
+    ],
+    payload: testRuns,
     options
   });
 }

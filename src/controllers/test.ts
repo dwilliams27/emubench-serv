@@ -203,10 +203,6 @@ export const endTest = async (req: Request, res: Response) => {
   }
 }
 
-export const getEmuTestConfigs = async (req: Request, res: Response) => {
-  // TODO: Fetch from DB
-}
-
 const getScreenshotsFromTest = async (activeTest: ActiveTest): Promise<Record<string, string>> => {
   let screenshots = {};
   const testScreenshots = await testService.getScreenshots(activeTest.id);
