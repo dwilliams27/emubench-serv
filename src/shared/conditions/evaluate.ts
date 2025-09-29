@@ -32,7 +32,6 @@ export function emuEvaluateCondition(condition?: EmuCondition): EmuConditionPrim
     throw new Error('Invalid condition: Logic must be defined');
   }
 
-  // TODO: Handle pointers
   emuParseAndPopulateCondition(condition);
 
   const result = emuEvaluateOperand(
@@ -47,17 +46,18 @@ export function emuParseAndPopulateCondition(condition: EmuCondition) {
   for (const inputName in condition.inputs) {
     const input = condition.inputs[inputName];
     input.parsedValue = emuParseAndPopulateConditionInput(input);
+    console.log(`Parsed input ${input.name}: ${input.parsedValue}`);
   }
 }
 
 export function emuEvaluateOperand(inputs: EmuConditionInputSet, operand: EmuConditionOperand): EmuConditionPrimitiveResult {
-  if (operand.conditionPart) {
+  if (operand.conditionPart !== undefined) {
     const lhsResult = operand.conditionPart.lhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.lhs) } : undefined;
     const rhsResult = operand.conditionPart.rhs ? { primitive: emuEvaluateOperand(inputs, operand.conditionPart.rhs) } : undefined;
     return EmuOperationNameToFunctionMap[operand.conditionPart.operation.name]?.(inputs, { lhs: lhsResult, rhs: rhsResult });
-  } else if (operand.primitive) {
+  } else if (operand.primitive !== undefined) {
     return operand.primitive;
-  } else if (operand.input) {
+  } else if (operand.input !== undefined) {
     // If lookup value
     const parsedValue = inputs[operand.input.name]?.parsedValue;
     if (parsedValue === undefined) {
