@@ -8,17 +8,20 @@ export function emuFlattenCondition(condition?: EmuCondition): EmuConditionOpera
   }
   emuParseAndPopulateCondition(condition);
 
-  return emuFlattenConditionHelper({ conditionPart: condition.logic }, []);
+  return emuFlattenConditionHelper(condition.inputs, { conditionPart: condition.logic }, []);
 }
 
-function emuFlattenConditionHelper(currentNode: EmuConditionOperand, currentResult: EmuConditionOperand[]): EmuConditionOperand[] {
+function emuFlattenConditionHelper(inputs: EmuConditionInputSet, currentNode: EmuConditionOperand, currentResult: EmuConditionOperand[]): EmuConditionOperand[] {
+  if (currentNode.input) {
+    currentNode.input.parsedValue = emuParseAndPopulateConditionInput(inputs[currentNode.input.name]);
+  }
   if (currentNode.conditionPart) {
     if (currentNode.conditionPart.lhs) {
-      currentResult = emuFlattenConditionHelper(currentNode.conditionPart.lhs, currentResult);
+      currentResult = emuFlattenConditionHelper(inputs, currentNode.conditionPart.lhs, currentResult);
     }
     currentResult.push({ conditionPart: { operation: currentNode.conditionPart.operation } });
     if (currentNode.conditionPart.rhs) {
-      currentResult = emuFlattenConditionHelper(currentNode.conditionPart.rhs, currentResult);
+      currentResult = emuFlattenConditionHelper(inputs, currentNode.conditionPart.rhs, currentResult);
     }
   } else {
     currentResult.push(currentNode);
@@ -72,7 +75,7 @@ export function emuParseAndPopulateConditionInput(input: EmuConditionInput): Emu
   if (input.parsedValue !== undefined) {
     return input.parsedValue;
   }
-  if (!input.rawValue) {
+  if (input.rawValue === undefined) {
     throw new Error(`Input ${input.name} has no raw value`);
   }
   switch (input.type) {

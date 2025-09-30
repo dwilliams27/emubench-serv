@@ -12,6 +12,10 @@ import { fhandleErrorResponse } from "@/utils/error";
 
 const DEBUG_MAX_ITERATIONS = 50;
 
+export const setupExperiment = async (req: Request, res: Response) => {
+
+}
+
 export const setupTest = async (req: Request, res: Response) => {
   const testId = genId(TEST_ID);
   console.log(`[TEST] Setting up test ${testId}`);

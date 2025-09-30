@@ -28,6 +28,7 @@ app.get('/health', (req, res) => {
 // test-orx
 app.get('/test-orx/tests/:testId', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestState);
 app.post('/test-orx/setup', [firebaseAuthMiddleware, traceMiddleware], testController.setupTest);
+app.post('/test-orx/experiment-setup', [firebaseAuthMiddleware, traceMiddleware], testController.setupExperiment);
 app.post('/test-orx/end', [firebaseAuthMiddleware, traceMiddleware], testController.endTest);
 // For agent
 app.post('/test-orx/tests/:testId/token-exchange', [firebaseAuthMiddleware, traceMiddleware], testController.attemptTokenExchange);
