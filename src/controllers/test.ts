@@ -2,25 +2,65 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuBootConfig, EmuError, EmuGetTraceLogsResponse, EmuReqTraceMetadata, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { AGENT_STATE_ID, BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
+import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse, EmuReqTraceMetadata, EmuTestConfig, EmuTestState } from "@/shared/types";
+import { AGENT_STATE_ID, BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, EXPERIMENT_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
 import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
 import { fwriteErrorToTraceLog, fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
+import { EmuExperiment, EmuExperimentRunGroup, EmuSetupExperimentRequest } from "@/shared/types/experiments";
 
-const DEBUG_MAX_ITERATIONS = 50;
+const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 20;
 
 export const setupExperiment = async (req: Request, res: Response) => {
+  console.log('[TEST] Setting up experiment');
+  try {
+    const body = req.body as unknown as EmuSetupExperimentRequest;
 
+    if (!body.experimentConfig) {
+      throw createEmuError('Must provide experimentConfig');
+    }
+    if (body.experimentConfig.totalTestRuns > DEBUG_MAX_EXPERIMENT_TOTAL_TESTS) {
+      throw createEmuError('Too many test runs');
+    }
+
+    const experimentId = genId(EXPERIMENT_ID);
+    const experiment: EmuExperiment = {
+      id: experimentId,
+      name: body.experimentConfig.name,
+      description: body.experimentConfig.description,
+      baseConfig: body.experimentConfig.baseConfig,
+      totalTestRuns: body.experimentConfig.totalTestRuns,
+      uniqueGroupCount: body.experimentConfig.uniqueGroupCount,
+      groupGenerator: body.experimentConfig.groupGenerator,
+
+      runGroups: [],
+      RESULTS: [],
+    };
+
+    const experimentRunGroups: EmuExperimentRunGroup[] = [];
+    let totalTests = 0;
+    for (let i = 0; i < experiment.uniqueGroupCount; i++) {
+      const runGroup = experiment.groupGenerator(experiment.baseConfig, i);
+      experimentRunGroups.push(runGroup);
+      totalTests += runGroup.iterations;
+    }
+    if (totalTests !== experiment.totalTestRuns) {
+      throw createEmuError('Total test runs do not match sum of run group iterations');
+    }
+
+    experiment.runGroups = experimentRunGroups;
+
+    // TODO: Queue all the jobs
+  } catch (error) {
+    fhandleErrorResponse(error, req, res);
+  }
 }
 
 export const setupTest = async (req: Request, res: Response) => {
   const testId = genId(TEST_ID);
   console.log(`[TEST] Setting up test ${testId}`);
-  if (req.metadata?.trace) req.metadata.trace.testId = testId;
-  await fwriteFormattedTraceLog(`Setting up test ${testId}`, req.metadata?.trace);
 
   try {
     const bootConfig: EmuBootConfig = {
@@ -30,105 +70,13 @@ export const setupTest = async (req: Request, res: Response) => {
       goalConfig: req.body.goalConfig,
     };
 
-    if (bootConfig.agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
-      throw createEmuError('Max iterations too large');
-    }
-
-    // Write config to bucket
-    const writeSessionFolder = await testService.createTestSessionFolder(testId);
-    if (!writeSessionFolder) {
-      throw createEmuError('Failed to create session folder on FUSE');
-    }
-    const writeConfig = await fwriteBootConfig(testId, bootConfig);
-    if (!writeConfig) {
-      throw createEmuError('Failed to write BOOT_CONFIG');
-    }
-
-    const testState: EmuTestState = {
-      id: testId,
-      status: 'booting',
-      stateHistory: {},
-      screenshots: {}
-    };
-    const testWrite = await fwriteTestState(testId, testState);
-    if (!testWrite) {
-      throw createEmuError('Failed to write TEST_STATE');
-    }
-
-    const sharedTestState = {
-      id: genId(SHARED_TEST_STATE_ID)
-    };
-
-    const activeTest: ActiveTest = {
-      id: testId,
-      exchangeToken: genId(EXCHANGE_TOKEN_ID),
-    };
-
-    const sharedWrite = await fwriteSharedTestState(testId, sharedTestState);
-    if (!sharedWrite) {
-      throw createEmuError('Failed to write SHARED_STATE');
-    }
-
-    req.emuSession.activeTests[testId] = activeTest;
-
-    // Deploy game and agent in background
-    asyncEmulatorSetup(activeTest, bootConfig.testConfig, req.metadata?.trace);
-    asyncAgentSetup(activeTest, req.headers.authorization!.substring(7), req.metadata?.trace);
-
-    await fwriteFormattedTraceLog(`Test ${testId} initialized`, req.metadata?.trace);
+    const test = await testService.runTest(bootConfig, req.headers.authorization!.substring(7));
+    req.emuSession.activeTests[testId] = test;
+    
     res.send({ testId });
   } catch (error) {
     console.error(`Error setting up test: ${formatError(error)}`);
     fhandleErrorResponse(error, req, res);
-  }
-}
-
-async function asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestConfig, trace?: EmuReqTraceMetadata) {
-  try {
-    const gameContainer = await containerService.deployGame(activeTest.id, testConfig);
-
-    if (!gameContainer.service.uri) {
-      throw new Error('Unable to find container URL');
-    }
-    fwriteFormattedTraceLog(`Emulator container initialized`, trace);
-    
-    const { identityToken, service } = gameContainer;
-    activeTest.container = service;
-    activeTest.googleToken = identityToken;
-
-    const emulatorState = await freadEmulatorState(activeTest.id);
-    const sharedTestState = await freadSharedTestState(activeTest.id);
-    if (emulatorState && emulatorState.status !== 'error' && sharedTestState) {
-      await fwriteSharedTestState(
-        activeTest.id,
-        {
-          ...sharedTestState,
-          exchangeToken: activeTest.exchangeToken,
-          emulatorUri: service.uri!
-        }
-      );
-    } else {
-      throw createEmuError('Failed to read emulator or shared state');
-    }
-  } catch (error) {
-    fwriteErrorToTraceLog(error, trace);
-    console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
-    const emulatorState = await freadEmulatorState(activeTest.id);
-    if (emulatorState) {
-      emulatorState.status = 'error';
-      await fwriteEmulatorState(activeTest.id, emulatorState);
-    }
-  }
-}
-
-async function asyncAgentSetup(activeTest: ActiveTest, authToken: string, trace?: EmuReqTraceMetadata) {
-  try {
-    const agentJob = await containerService.runAgent(activeTest.id, authToken);
-    fwriteAgentState(activeTest.id, { id: genId(AGENT_STATE_ID), status: 'booting' as const });
-    fwriteFormattedTraceLog(`Agent creation request sent`, trace);
-  } catch (error) {
-    fwriteErrorToTraceLog(error, trace);
-    console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
   }
 }
 

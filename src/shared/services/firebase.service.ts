@@ -52,30 +52,56 @@ export class FirebaseService {
     if (pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
     }
-    const batch = this.db.batch();
 
-    payload.forEach(item => {
-      let ref = this.drillDownPath(pathParams);
-      if (ref instanceof CollectionReference) {
-        ref = ref.doc(item.id);
-      }
-      
-      if (options.update) {
-        const { id, ...updateData } = item;
-        batch.update(ref, {
-          ...updateData,
-          updatedAt: FieldValue.serverTimestamp()
-        });
-      } else {
-        batch.set(ref, {
-          ...item,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp()
-        });
-      }
-    });
+    if (options.atomic) {
+      await this.db.runTransaction(async (transaction) => {
+        payload.forEach(item => {
+          let ref = this.drillDownPath(pathParams);
+          if (ref instanceof CollectionReference) {
+            ref = ref.doc(item.id);
+          }
 
-    await batch.commit();
+          if (options.update) {
+            const { id, ...updateData } = item;
+            transaction.update(ref, {
+              ...updateData,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          } else {
+            transaction.set(ref, {
+              ...item,
+              createdAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          }
+        });
+      });
+    } else {
+      const batch = this.db.batch();
+
+      payload.forEach(item => {
+        let ref = this.drillDownPath(pathParams);
+        if (ref instanceof CollectionReference) {
+          ref = ref.doc(item.id);
+        }
+
+        if (options.update) {
+          const { id, ...updateData } = item;
+          batch.update(ref, {
+            ...updateData,
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        } else {
+          batch.set(ref, {
+            ...item,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        }
+      });
+
+      await batch.commit();
+    }
   }
 
   async read(options: {

@@ -19,6 +19,8 @@ export const HISTORY_ID = 'hist';
 export const HISTORY_SLICE_ID = 'hslice';
 export const HISTORY_ATOM_ID = 'hatom';
 
+export const EXPERIMENT_ID = 'exp';
+
 // Ids used for firebase docs
 export const FID_LIST = [
   TEST_ID,

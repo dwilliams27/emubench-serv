@@ -1,9 +1,11 @@
 import { firebaseService } from "@/shared/services/firebase.service";
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
-import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuLogBlock, FEmuSharedTestState, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
+import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuLogBlock, FEmuSharedTestState, FEmuTestQueueJob, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
 import { EmuTestRun } from "@/shared/types/test-run";
 import { EmuWriteOptions } from "@/shared/types/resource-locator";
 import { formatError } from "@/shared/utils/error";
+import { EmuExperiment, EmuTestQueueJob } from "@/shared/types/experiments";
+import { FieldValue } from "firebase-admin/firestore";
 
 const currentService: EmuServiceName = (process.env.SERVICE_NAME as EmuServiceName) || 'UNKNOWN';
 // For now shallow, only 1 level beyond testId
@@ -252,6 +254,7 @@ export async function freadTraceLogs(traceId: string): Promise<EmuTraceLog[] | n
   return result ? sortResultsByCreatedAt(result, true) : null;
 }
 export async function fwriteTraceLogs(traceId: string, logs: DocumentWithId[], options: EmuWriteOptions = {}) {
+  console.log(logs.map(l => l.message).join('\n'));
   return true;
   return writeObjectToFirebase({
     pathParams: [
@@ -293,7 +296,7 @@ export async function fwriteNewTrace(traceId: string, testId: string, options: E
   });
 }
 
-export async function freadTestRun(testId: string): Promise<EmuTestRun[] | null> {
+export async function freadTestRuns(testId: string): Promise<EmuTestRun[] | null> {
   const result = await readObjectFromFirebase<FEmuTestRun>({
     pathParams: [
       { collection: FB_1.TEST_RUNS, docId: testId },
@@ -307,6 +310,43 @@ export async function fwriteTestRun(testRun: EmuTestRun, options: EmuWriteOption
       { collection: FB_1.TEST_RUNS }
     ],
     payload: [testRun],
+    options
+  });
+}
+
+export async function freadExperiment(experimentId: string): Promise<EmuTestRun[] | null> {
+  const result = await readObjectFromFirebase<FEmuTestRun>({
+    pathParams: [
+      { collection: FB_1.EXPERIMENTS, docId: experimentId },
+    ],
+  });
+  return result;
+}
+export async function fwriteExperiment(experiment: EmuExperiment, options: EmuWriteOptions = {}) {
+  return writeObjectToFirebase({
+    pathParams: [
+      { collection: FB_1.EXPERIMENTS }
+    ],
+    payload: [experiment],
+    options
+  });
+}
+
+export async function freadJobs(where: [string, FirebaseFirestore.WhereFilterOp, any][]): Promise<EmuTestQueueJob[] | null> {
+  const result = await readObjectFromFirebase<FEmuTestQueueJob>({
+    pathParams: [
+      { collection: FB_1.TEST_QUEUE },
+    ],
+    where
+  });
+  return result ? sortResultsByCreatedAt(result, true) : null;
+}
+export async function fwriteJob(job: EmuTestQueueJob, options: EmuWriteOptions = {}) {
+  return writeObjectToFirebase({
+    pathParams: [
+      { collection: FB_1.TEST_QUEUE }
+    ],
+    payload: [job],
     options
   });
 }
