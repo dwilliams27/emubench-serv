@@ -9,7 +9,8 @@
     "start": "node dist/index.js",
     "debug-mcp": "npx @modelcontextprotocol/inspector ./dist/index.js",
     "typecheck": "tsc --noEmit",
-    "shared-sync": "./scripts/sharedsync.sh"
+    "shared-sync": "./scripts/sharedsync.sh",
+    "generate-key": "tsx scripts/generate-encryption-key.ts"
   },
   "keywords": [],
   "author": "",

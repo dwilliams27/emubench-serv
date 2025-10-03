@@ -233,6 +233,11 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
         name  = "GOOGLE_GENERATIVE_AI_API_KEY"
         value = var.google_generative_ai_api_key
       }
+
+      env {
+        name  = "ENCRYPTION_SECRET"
+        value = var.encryption_secret
+      }
       
       env {
         name  = "MAX_CONCURRENT_CONTAINERS"

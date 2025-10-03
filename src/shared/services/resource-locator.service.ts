@@ -341,12 +341,12 @@ export async function freadJobs(where: [string, FirebaseFirestore.WhereFilterOp,
   });
   return result ? sortResultsByCreatedAt(result, true) : null;
 }
-export async function fwriteJob(job: EmuTestQueueJob, options: EmuWriteOptions = {}) {
+export async function fwriteJobs(jobs: (Partial<EmuTestQueueJob> & { id: string })[], options: EmuWriteOptions = {}) {
   return writeObjectToFirebase({
     pathParams: [
       { collection: FB_1.TEST_QUEUE }
     ],
-    payload: [job],
+    payload: jobs,
     options
   });
 }

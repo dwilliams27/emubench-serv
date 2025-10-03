@@ -2,14 +2,15 @@ import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
-import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse, EmuReqTraceMetadata, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { AGENT_STATE_ID, BOOT_CONFIG_ID, EXCHANGE_TOKEN_ID, EXPERIMENT_ID, genId, SHARED_TEST_STATE_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
+import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse } from "@/shared/types";
+import { BOOT_CONFIG_ID, EXPERIMENT_ID, genId, JOB_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadSharedTestState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
-import { fwriteErrorToTraceLog, fwriteFormattedTraceLog } from "@/shared/utils/trace";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
-import { EmuExperiment, EmuExperimentRunGroup, EmuSetupExperimentRequest } from "@/shared/types/experiments";
+import { EmuExperiment, EmuExperimentRunGroup, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
+import { cryptoService } from "@/services/crypto.service";
 
 const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 20;
 
@@ -52,7 +53,24 @@ export const setupExperiment = async (req: Request, res: Response) => {
 
     experiment.runGroups = experimentRunGroups;
 
-    // TODO: Queue all the jobs
+    const jobs = [];
+    for (const runGroup of experiment.runGroups) {
+      for (let i = 0; i < runGroup.iterations; i++) {
+        const job: EmuTestQueueJob = {
+          id: genId(JOB_ID),
+          bootConfig: runGroup.bootConfig,
+          encryptedUserToken: cryptoService.encrypt(req.headers.authorization!.substring(7)),
+          status: 'pending',
+          error: "",
+          startedAt: null,
+          completedAt: null
+        };
+        jobs.push(job);
+      }
+    }
+    await fwriteJobs(jobs);
+
+    res.send({ experimentId });
   } catch (error) {
     fhandleErrorResponse(error, req, res);
   }

@@ -1,5 +1,6 @@
+import { cryptoService } from "@/services/crypto.service";
 import { testService } from "@/services/test.service";
-import { freadJobs, freadTestRun, freadTestRuns, fwriteJob } from "@/shared/services/resource-locator.service";
+import { freadJobs, freadTestRuns, fwriteJobs } from "@/shared/services/resource-locator.service";
 import { EmuTestQueueJob } from "@/shared/types/experiments";
 import { EmuTestRun } from "@/shared/types/test-run";
 import { FieldValue } from "firebase-admin/firestore";
@@ -47,8 +48,8 @@ export class TestQueueService {
       }
       const jobDoc = jobs[0];
 
-      const success = await fwriteJob(
-        { ...jobDoc, status: 'running', startedAt: FieldValue.serverTimestamp() },
+      const success = await fwriteJobs(
+        [{ id: jobDoc.id, status: 'running', startedAt: FieldValue.serverTimestamp() }],
         { update: true, atomic: true }
       );
       
@@ -65,8 +66,7 @@ export class TestQueueService {
     try {
       this.activeJobs.add(job.id);
 
-      // TODO: auth
-      testService.runTest(job.bootConfig, );
+      testService.runTest(job.bootConfig, cryptoService.decrypt(job.encryptedUserToken));
       let result: EmuTestRun | null = null;
       while (!result) {
         try {
@@ -81,24 +81,23 @@ export class TestQueueService {
         await this.sleep(5_000);
       }
       
-      await fwriteJob({
-        ...job,
+      await fwriteJobs([{
+        id: job.id,
         status: 'completed',
-        result,
         completedAt: FieldValue.serverTimestamp()
-      });
+      }], { update: true });
       
       console.log(`[Work] Job ${job.id} completed`);
     } catch (error) {
       console.error(`[Work] Job ${job.id} failed:`, error);
       
       // TODO: retry logic
-      await fwriteJob({
-        ...job,
+      await fwriteJobs([{
+        id: job.id,
         status: 'error',
         error: (error instanceof Error) ? error.message : 'Unknown error',
         completedAt: FieldValue.serverTimestamp()
-      });
+      }], { update: true });
     } finally {
       this.activeJobs.delete(job.id);
     }

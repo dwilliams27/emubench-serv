@@ -25,9 +25,10 @@ export interface EmuExperimentRunGroup {
 export interface EmuTestQueueJob {
   id: string;
   bootConfig: EmuBootConfig;
+  encryptedUserToken: string;
   status: 'pending' | 'running' | 'error' | 'completed';
   error: string;
-  startedAt: any;
+  startedAt: any | null;
   completedAt: any | null;
 }
 

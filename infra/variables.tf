@@ -86,3 +86,9 @@ variable "project_id" {
   type        = string
   default     = "emubench-459802"
 }
+
+variable "encryption_secret" {
+  description = "Needed for stuff"
+  type        = string
+  default     = "dummy"
+}
