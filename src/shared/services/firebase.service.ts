@@ -46,9 +46,6 @@ export class FirebaseService {
     payload: DocumentWithId[],
     options: EmuWriteOptions
   ) {
-    if (payload.length > 1) {
-      throw Error('Can only write one object to a specific file');
-    }
     if (pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
     }
@@ -113,7 +110,6 @@ export class FirebaseService {
     }
 
     const pathString = options.pathParams.map(p => p.docId ? `${p.collection}/${p.docId}` : p.collection).join('/');
-    console.log(`[Firebase] Reading from ${pathString}`);
 
     const ref = this.drillDownPath(options.pathParams);
     if (ref instanceof CollectionReference) {
@@ -129,19 +125,16 @@ export class FirebaseService {
         id: doc.id,
         ...doc.data()
       }));
-      console.log(`[Firebase] Got ${documentsWithId.length} document(s) from query`);
       return documentsWithId;
     } else {
       const doc = await ref.get();
       if (!doc.exists) {
-        console.log(`[Firebase] No document found at ${pathString}`);
         return [];
       }
       const documentWithId = {
         id: doc.id,
         ...doc.data()
       };
-      console.log(`[Firebase] Got document: ${JSON.stringify(documentWithId)}`);
       return [documentWithId];
     }
   }

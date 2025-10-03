@@ -60,8 +60,7 @@ async function readObjectFromFirebase<T extends FEmuBaseObject>({ pathParams, wh
       return FB_CACHE[cacheKey] as T[];
     }
   }
-  
-  console.log(`[RecL] Reading object in ${objectPath}`);
+
   try {
     const objects = await firebaseService.read({
       pathParams,
@@ -81,7 +80,6 @@ async function writeObjectToFirebase({ pathParams, payload, options }: {
 }): Promise<boolean> {
   throwIfCantWrite(pathParams[-1]?.collection);
   const objectPath = pathParamsToString(pathParams);
-  console.log(`[RecL] Writing object to ${objectPath}`);
   try {
     await firebaseService.write(pathParams, payload, options);
     if (shouldUseCache(pathParams[-1]?.collection)) {
@@ -322,7 +320,7 @@ export async function freadExperiment(experimentId: string): Promise<EmuTestRun[
   });
   return result;
 }
-export async function fwriteExperiment(experiment: EmuExperiment, options: EmuWriteOptions = {}) {
+export async function fwriteExperiment(experiment: Omit<EmuExperiment, 'RESULTS'>, options: EmuWriteOptions = {}) {
   return writeObjectToFirebase({
     pathParams: [
       { collection: FB_1.EXPERIMENTS }

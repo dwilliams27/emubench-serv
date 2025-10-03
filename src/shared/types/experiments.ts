@@ -6,11 +6,7 @@ export interface EmuExperiment {
   name: string;
   description: string;
   baseConfig: EmuBootConfig;
-
   totalTestRuns: number;
-  uniqueGroupCount: number;
-  groupGenerator: (baseConfig: EmuBootConfig, index: number) => EmuExperimentRunGroup;
-
   runGroups: EmuExperimentRunGroup[];
 
   RESULTS: EmuTestRun[]; 
@@ -33,7 +29,7 @@ export interface EmuTestQueueJob {
 }
 
 export interface EmuSetupExperimentRequest {
-  experimentConfig: Omit<EmuExperiment, 'id'>;
+  experimentConfig: Omit<EmuExperiment, 'id' | 'RESULTS'>;
 }
 
 export interface EmuSetupExperimentResponse {

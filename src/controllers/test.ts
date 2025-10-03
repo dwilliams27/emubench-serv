@@ -1,4 +1,3 @@
-import { containerService } from "@/services/container.service";
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
 import { ActiveTest } from "@/types/session";
@@ -6,10 +5,10 @@ import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse } from "@/
 import { BOOT_CONFIG_ID, EXPERIMENT_ID, genId, JOB_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteExperiment, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
 import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
-import { EmuExperiment, EmuExperimentRunGroup, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
+import { EmuExperiment, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
 import { cryptoService } from "@/services/crypto.service";
 import { testQueueService } from "@/services/test-queue.service";
 
@@ -28,15 +27,13 @@ export const setupExperiment = async (req: Request, res: Response) => {
     }
 
     const experimentId = genId(EXPERIMENT_ID);
-    const experiment: EmuExperiment = {
+    const experiment: Omit<EmuExperiment, 'RESULTS'> = {
       id: experimentId,
       name: body.experimentConfig.name,
       description: body.experimentConfig.description,
       baseConfig: body.experimentConfig.baseConfig,
       totalTestRuns: body.experimentConfig.totalTestRuns,
       runGroups: body.experimentConfig.runGroups || [],
-
-      RESULTS: [],
     };
 
     const totalTests = experiment.runGroups.reduce((sum, group) => sum + group.iterations, 0);
@@ -47,9 +44,14 @@ export const setupExperiment = async (req: Request, res: Response) => {
     const jobs = [];
     for (const runGroup of experiment.runGroups) {
       for (let i = 0; i < runGroup.iterations; i++) {
+        const bootConfigCopy = {
+          ...runGroup.bootConfig
+        };
+        bootConfigCopy.id = genId(BOOT_CONFIG_ID);
+        bootConfigCopy.testConfig.id = genId(TEST_ID);
         const job: EmuTestQueueJob = {
           id: genId(JOB_ID),
-          bootConfig: runGroup.bootConfig,
+          bootConfig: bootConfigCopy,
           encryptedUserToken: cryptoService.encrypt(req.headers.authorization!.substring(7)),
           status: 'pending',
           error: "",
@@ -60,8 +62,9 @@ export const setupExperiment = async (req: Request, res: Response) => {
       }
     }
     await fwriteJobs(jobs);
+    await fwriteExperiment(experiment);
 
-    if (testQueueService.sleeping) {
+    if (!testQueueService.isRunning) {
       console.log('[TEST] Waking up the lazy workers');
       testQueueService.start();
     }

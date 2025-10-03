@@ -18,11 +18,15 @@ export class TestQueueService {
     this.isRunning = true;
     console.log(`[Work] Task queue workers started`);
     
-    const workers = Array(this.concurrency).map((_, i) => this.processLoop(i));
+    let workers = [];
+    for (let i = 0; i < this.concurrency; i++) {
+      workers.push(this.processLoop(i));
+    }
     await Promise.all(workers);
   }
 
   async processLoop(slotId: number) {
+    console.log(`[Work][Slot ${slotId}] Worker reporting for duty`);
     while (this.isRunning) {
       try {
         const job = await this.claimNextJob();
@@ -31,6 +35,7 @@ export class TestQueueService {
           console.log(`[Work][Slot ${slotId}] Processing job ${job.id}`);
           await this.executeJob(job);
         } else {
+          console.log(`[Work][Slot ${slotId}] Taking a nap...`);
           await this.sleep(10_000 + Math.random() * 1000);
         }
       } catch (error) {
@@ -38,12 +43,16 @@ export class TestQueueService {
         await this.sleep(2000);
       }
     }
+    console.log(`[Work][Slot ${slotId}] No pending jobs, time to sleep...`);
   }
 
   async claimNextJob() {
     try {
       const jobs = await freadJobs([['status', '==', 'pending']]);
+      console.log(`[Work] Found ${jobs ? jobs.length : 0} pending jobs`);
       if (!jobs || jobs.length === 0) {
+        console.log(`[Work] No pending jobs, putting the workers to bed`);
+        this.stop();
         return null;
       }
       const jobDoc = jobs[0];
@@ -66,7 +75,8 @@ export class TestQueueService {
     try {
       this.activeJobs.add(job.id);
 
-      testService.runTest(job.bootConfig, cryptoService.decrypt(job.encryptedUserToken));
+      await testService.runTest(job.bootConfig, cryptoService.decrypt(job.encryptedUserToken));
+
       let result: EmuTestRun | null = null;
       while (!result) {
         try {
@@ -78,7 +88,7 @@ export class TestQueueService {
         } catch (error) {
           console.error(`[Work] Error fetching test run for job ${job.id}:`, error);
         }
-        await this.sleep(5_000);
+        await this.sleep(10_000);
       }
       
       await fwriteJobs([{
@@ -112,3 +122,6 @@ export class TestQueueService {
     console.log(`[Work] Stopping workers...`);
   }
 }
+
+const testQueueService = new TestQueueService(1);
+export { testQueueService };
