@@ -11,6 +11,7 @@ import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
 import { EmuExperiment, EmuExperimentRunGroup, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
 import { cryptoService } from "@/services/crypto.service";
+import { testQueueService } from "@/services/test-queue.service";
 
 const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 20;
 
@@ -33,25 +34,15 @@ export const setupExperiment = async (req: Request, res: Response) => {
       description: body.experimentConfig.description,
       baseConfig: body.experimentConfig.baseConfig,
       totalTestRuns: body.experimentConfig.totalTestRuns,
-      uniqueGroupCount: body.experimentConfig.uniqueGroupCount,
-      groupGenerator: body.experimentConfig.groupGenerator,
+      runGroups: body.experimentConfig.runGroups || [],
 
-      runGroups: [],
       RESULTS: [],
     };
 
-    const experimentRunGroups: EmuExperimentRunGroup[] = [];
-    let totalTests = 0;
-    for (let i = 0; i < experiment.uniqueGroupCount; i++) {
-      const runGroup = experiment.groupGenerator(experiment.baseConfig, i);
-      experimentRunGroups.push(runGroup);
-      totalTests += runGroup.iterations;
-    }
+    const totalTests = experiment.runGroups.reduce((sum, group) => sum + group.iterations, 0);
     if (totalTests !== experiment.totalTestRuns) {
       throw createEmuError('Total test runs do not match sum of run group iterations');
     }
-
-    experiment.runGroups = experimentRunGroups;
 
     const jobs = [];
     for (const runGroup of experiment.runGroups) {
@@ -69,6 +60,11 @@ export const setupExperiment = async (req: Request, res: Response) => {
       }
     }
     await fwriteJobs(jobs);
+
+    if (testQueueService.sleeping) {
+      console.log('[TEST] Waking up the lazy workers');
+      testQueueService.start();
+    }
 
     res.send({ experimentId });
   } catch (error) {
