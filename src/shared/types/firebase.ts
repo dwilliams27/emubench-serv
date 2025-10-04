@@ -14,7 +14,7 @@ export interface FirebaseTimestamp {
 
 export interface FirebasePathParam {
   collection: string;
-  docId?: string;
+  docIds?: string[];
 };
 
 // Top level firebase collections
