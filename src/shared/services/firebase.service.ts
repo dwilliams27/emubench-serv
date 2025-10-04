@@ -99,7 +99,7 @@ export class FirebaseService {
     }
   }
 
-  async runWriteTransaction(
+  async writeTransaction(
     payload: DocumentWithId[],
     transaction: FirebaseFirestore.Transaction,
     pathParams: FirebasePathParam[],
@@ -158,7 +158,7 @@ export class FirebaseService {
     }
 
     if (options.runTransaction) {
-      const finalPromise = (transaction: FirebaseFirestore.Transaction) => this.runWriteTransaction(payload, transaction, pathParams, options);
+      const finalPromise = (transaction: FirebaseFirestore.Transaction) => this.writeTransaction(payload, transaction, pathParams, options);
       await this.db.runTransaction(async (transaction) => {
         await Promise.all([...(options.transactionFunctions?.map((func) => func(transaction)) || []), finalPromise(transaction)]);
       });
@@ -167,12 +167,15 @@ export class FirebaseService {
 
     if (options.atomic) {
       if (!!options.transactionFunctions) {
-        return async(transaction: FirebaseFirestore.Transaction) => {
-          await this.runWriteTransaction(payload, transaction, pathParams, options);
-        };
+        return [
+          ...options.transactionFunctions,
+          async(transaction: FirebaseFirestore.Transaction) => {
+            await this.writeTransaction(payload, transaction, pathParams, options);
+          }
+        ];
       }
       await this.db.runTransaction(async (transaction) => {
-        await this.runWriteTransaction(payload, transaction, pathParams, options);
+        await this.writeTransaction(payload, transaction, pathParams, options);
       });
     } else {
       const batch = this.db.batch();
@@ -238,12 +241,22 @@ export class FirebaseService {
     if (options.pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
     }
+    if (options.runTransaction) {
+      const finalPromise = (transaction: FirebaseFirestore.Transaction) => this.readTransaction(transaction, options);
+      await this.db.runTransaction(async (transaction) => {
+        await Promise.all([...(options.transactionFunctions?.map((func) => func(transaction)) || []), finalPromise(transaction)]);
+      });
+      return true;
+    }
 
     if (options.atomic) {
       if (!!options.transactionFunctions) {
-        return async (transaction: FirebaseFirestore.Transaction) => {
-          return await this.readTransaction(transaction, options);
-        };
+        return [
+          ...options.transactionFunctions,
+          async (transaction: FirebaseFirestore.Transaction) => {
+            return await this.readTransaction(transaction, options);
+          }
+        ];
       }
       return await this.db.runTransaction(async (transaction) => {
         return await this.readTransaction(transaction, options);

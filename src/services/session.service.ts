@@ -7,6 +7,7 @@ export class SessionService {
     this.sessions[sessionId] = {
       activeTests: {},
     };
+    return this.sessions[sessionId];
   }
 
   getSession(sessionId: string): EmuSession | undefined {

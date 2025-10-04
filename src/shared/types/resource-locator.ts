@@ -6,7 +6,7 @@ export interface EmuWriteOptions {
   pathParams: FirebasePathParam[];
   update?: boolean;
   atomic?: boolean;
-  transactionFunctions?: ((transaction: FirebaseFirestore.Transaction) => Promise<void>)[];
+  transactionFunctions?: EmuFirebaseTransactionFunction[];
   runTransaction?: boolean;
 };
 
@@ -15,4 +15,5 @@ export interface EmuReadOptions {
   where?: [string, FirebaseFirestore.WhereFilterOp, any][];
   atomic?: boolean;
   transactionFunctions?: EmuFirebaseTransactionFunction[];
+  runTransaction?: boolean;
 };

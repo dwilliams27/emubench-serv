@@ -34,12 +34,12 @@ export async function firebaseAuthMiddleware(
         provider: 'firebase'
       };
 
-      if (!sessionService.isValidSession(decodedToken.uid)) {
-        console.log(`[AUTH] Creating new session for user: ${decodedToken.email} under ID: ${decodedToken.uid}`);
-        sessionService.createSession(decodedToken.uid);
+      if (!sessionService.isValidSession(token)) {
+        console.log(`[AUTH] Creating new session for user: ${decodedToken.email}`);
+        sessionService.createSession(token);
       }
 
-      req.emuSession = sessionService.getSession(decodedToken.uid)!;
+      req.emuSession = sessionService.getSession(token)!;
 
       console.log(`[AUTH] Firebase user authenticated: ${decodedToken.email}`);
       next();

@@ -332,7 +332,7 @@ export async function fwriteExperiment(experiment: Omit<EmuExperiment, 'RESULTS'
   });
 }
 
-export async function freadJobs(ids: string[], options: { where: [string, FirebaseFirestore.WhereFilterOp, any][], atomic?: boolean; transactionFunctions?: EmuFirebaseTransactionFunction[] }): Promise<EmuTestQueueJob[] | null | EmuFirebaseTransactionFunction[]> {
+export async function freadJobs(ids: string[], options: Partial<EmuReadOptions> = {}): Promise<EmuTestQueueJob[] | null | EmuFirebaseTransactionFunction[]> {
   const result = await readObjectFromFirebase<FEmuTestQueueJob>({
     pathParams: [
       { collection: FB_1.TEST_QUEUE, docIds: ids.length > 0 ? ids : undefined },
