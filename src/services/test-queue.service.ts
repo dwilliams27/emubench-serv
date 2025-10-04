@@ -85,7 +85,7 @@ export class TestQueueService {
       this.activeJobs.add(job.id);
 
       const decryptedToken = cryptoService.decrypt(job.encryptedUserToken);
-      const test = await testService.runTest(job.bootConfig,decryptedToken);
+      const test = await testService.runTest(job.bootConfig, decryptedToken);
 
       let session = sessionService.getSession(decryptedToken);
       if (!session) {

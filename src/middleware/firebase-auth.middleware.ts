@@ -41,7 +41,6 @@ export async function firebaseAuthMiddleware(
 
       req.emuSession = sessionService.getSession(token)!;
 
-      console.log(`[AUTH] Firebase user authenticated: ${decodedToken.email}`);
       next();
       
     } catch (firebaseError) {

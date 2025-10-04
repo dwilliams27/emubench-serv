@@ -1,10 +1,11 @@
 import { firebaseService } from "@/shared/services/firebase.service";
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
-import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuExperiment, FEmuLogBlock, FEmuSharedTestState, FEmuTestQueueJob, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
+import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentJob, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuExperiment, FEmuLogBlock, FEmuSharedTestState, FEmuTestQueueJob, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
 import { EmuTestRun } from "@/shared/types/test-run";
 import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions } from "@/shared/types/resource-locator";
 import { formatError } from "@/shared/utils/error";
 import { EmuExperiment, EmuTestQueueJob } from "@/shared/types/experiments";
+import { EmuAgentJob } from "@/shared/types/agent";
 
 const currentService: EmuServiceName = (process.env.SERVICE_NAME as EmuServiceName) || 'UNKNOWN';
 // For now shallow, only 1 level beyond testId
@@ -70,8 +71,7 @@ async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuRead
     }
     return objects as unknown as T[];
   } catch (error) {
-    console.error(`[RecL] Error reading ${objectPath}: ${formatError(error)}`);
-    return null;
+    throw new Error(`[RecL] Error reading ${objectPath}: ${formatError(error)}`);
   }
 }
 
@@ -92,8 +92,7 @@ async function writeObjectToFirebase(options: EmuWriteOptions): Promise<boolean 
     return true;
   } catch (error) {
     const objectPath = pathParamsToString(pathParams);
-    console.error(`[RecL] Error writing ${objectPath}: ${formatError(error)}`);
-    return false;
+    throw new Error(`[RecL] Error writing ${objectPath}: ${formatError(error)}`);
   }
 }
 
@@ -348,6 +347,29 @@ export async function fwriteJobs(jobs: (Partial<EmuTestQueueJob> & { id: string 
   return writeObjectToFirebase({
     pathParams: [
       { collection: FB_1.TEST_QUEUE }
+    ],
+    payload: jobs,
+    ...options
+  });
+}
+
+
+export async function freadAgentJobs(ids: string[], options: Partial<EmuReadOptions> = {}): Promise<EmuAgentJob[] | null | EmuFirebaseTransactionFunction[]> {
+  const result = await readObjectFromFirebase<FEmuAgentJob>({
+    pathParams: [
+      { collection: FB_1.AGENT_JOBS, docIds: ids.length > 0 ? ids : undefined },
+    ],
+    ...options
+  });
+  if (typeof result === 'function' || !result) {
+    return result;
+  }
+  return result ? sortResultsByCreatedAt(result as FEmuAgentJob[], true) : null;
+}
+export async function fwriteAgentJobs(jobs: (Partial<EmuAgentJob> & { id: string })[], options: Partial<EmuWriteOptions> = {}) {
+  return writeObjectToFirebase({
+    pathParams: [
+      { collection: FB_1.AGENT_JOBS }
     ],
     payload: jobs,
     ...options

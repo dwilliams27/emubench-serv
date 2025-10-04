@@ -3,8 +3,8 @@ import { mkdir, readdir } from "fs/promises";
 import path from "path";
 import { createEmuError, formatError } from "@/shared/utils/error";
 import { EmuBootConfig, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { freadEmulatorState, freadSharedTestState, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
-import { AGENT_STATE_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID } from "@/shared/utils/id";
+import { freadEmulatorState, freadSharedTestState, fwriteAgentJobs, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { AGENT_JOB_ID, AGENT_STATE_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID } from "@/shared/utils/id";
 import { containerService } from "@/services/container.service";
 
 const DEBUG_MAX_ITERATIONS = 50;
@@ -114,8 +114,18 @@ export class TestService {
   
   async asyncAgentSetup(activeTest: ActiveTest, authToken: string) {
     try {
-      const agentJob = await containerService.runAgent(activeTest.id, authToken);
-      fwriteAgentState(activeTest.id, { id: genId(AGENT_STATE_ID), status: 'booting' as const });
+      const testId = activeTest.id;
+      await fwriteAgentJobs([{
+        id: genId(AGENT_JOB_ID),
+        testId,
+        authToken,
+        testPath: `${SESSION_FUSE_PATH}/${testId}`,
+        status: 'pending',
+        error: '',
+        startedAt: null,
+        completedAt: null,
+      }]);
+      await fwriteAgentState(activeTest.id, { id: genId(AGENT_STATE_ID), status: 'booting' as const });
     } catch (error) {
       console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
     }

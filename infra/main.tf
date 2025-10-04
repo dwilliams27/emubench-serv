@@ -99,6 +99,12 @@ resource "google_project_iam_member" "cloud_build_storage_object_admin" {
   member  = "serviceAccount:${google_service_account.cloud_build_sa.email}"
 }
 
+resource "google_project_iam_member" "cloud_run_eventarc_receiver" {
+  project = var.project_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
 # Firestore
 resource "google_project_iam_member" "cloud_run_firestore_user" {
   project = var.project_id
@@ -248,6 +254,11 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
         name  = "CONTAINER_TIMEOUT_MINUTES"
         value = "30"
       }
+
+      env {
+        name  = "AGENT_SERVICE_URL"
+        value = google_cloud_run_v2_service.emubench_agent.uri
+      }
       
       resources {
         limits = {
@@ -272,52 +283,68 @@ resource "google_cloud_run_v2_service" "emubench_serv" {
   ingress = "INGRESS_TRAFFIC_ALL"
 }
 
-# Agent job
-resource "google_cloud_run_v2_job" "emubench_agent_job" {
-  name     = "emubench-agent-job"
-  location = "us-central1"
+# Agent service
+resource "google_cloud_run_v2_service" "emubench_agent" {
+  name                 = "emubench-agent"
+  location             = "us-central1"
+  invoker_iam_disabled = true
 
   template {
-    template {
-      service_account        = google_service_account.cloud_run_sa.email
-      execution_environment = "EXECUTION_ENVIRONMENT_GEN2"
+    containers {
+      image = "gcr.io/${var.project_id}/emubench-agent:latest"
 
-      containers {
-        image = "gcr.io/${var.project_id}/emubench-agent:latest"
-        
-        env {
-          name  = "TEST_PATH"
-          value = "/tmp/placeholder"
-        }
-        
-        env {
-          name  = "AUTH_TOKEN"
-          value = "placeholder-auth-token"
-        }
-
-        env {
-          name  = "GOOGLE_TOKEN"
-          value = "placeholder-google-token"
-        }
-        
-        env {
-          name  = "GAME_URL"
-          value = "placeholder-game-url"
-        }
-        
-        resources {
-          limits = {
-            cpu    = "1"
-            memory = "512Mi"
-          }
-        }
+      ports {
+        container_port = 8080
       }
 
-      max_retries = 0
+      env {
+        name  = "TEST_PATH"
+        value = "/tmp/placeholder"
+      }
+
+      env {
+        name  = "AUTH_TOKEN"
+        value = "placeholder-auth-token"
+      }
+
+      env {
+        name  = "GOOGLE_TOKEN"
+        value = "placeholder-google-token"
+      }
+
+      env {
+        name  = "GAME_URL"
+        value = "placeholder-game-url"
+      }
+
+      env {
+        name  = "OPENAI_API_KEY"
+        value = var.openai_api_key
+      }
+
+      env {
+        name  = "ANTHROPIC_API_KEY"
+        value = var.anthropic_api_key
+      }
+
+      env {
+        name  = "GOOGLE_GENERATIVE_AI_API_KEY"
+        value = var.google_generative_ai_api_key
+      }
+
+      resources {
+        limits = {
+          cpu    = "1"
+          memory = "512Mi"
+        }
+      }
     }
+
+    service_account = google_service_account.cloud_run_sa.email
   }
 
   depends_on = [google_service_account.cloud_run_sa]
+  ingress = "INGRESS_TRAFFIC_INTERNAL_ONLY"
 }
 
 resource "google_project_service" "firestore" {
@@ -342,4 +369,75 @@ resource "google_project_iam_member" "app_firestore_user" {
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
   
   depends_on = [google_project_service.firestore]
+}
+
+resource "google_cloud_run_v2_service_iam_member" "serv_can_invoke_agent" {
+  project  = var.project_id
+  location = google_cloud_run_v2_service.emubench_agent.location
+  name     = google_cloud_run_v2_service.emubench_agent.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_service" "eventarc" {
+  service = "eventarc.googleapis.com"
+}
+
+# Create Eventarc trigger for Firestore document creation
+resource "google_eventarc_trigger" "firestore_job_trigger" {
+  name     = "firestore-job-trigger"
+  location = "nam5"
+  project  = var.project_id
+
+  event_data_content_type = "application/protobuf"
+
+  # Match Firestore document creation events
+  matching_criteria {
+    attribute = "type"
+    value     = "google.cloud.firestore.document.v1.created"
+  }
+
+  matching_criteria {
+    attribute = "database"
+    value     = "(default)"
+  }
+
+  matching_criteria {
+    attribute = "document"
+    value     = "AGENT_JOBS/*"
+    operator  = "match-path-pattern"
+  }
+
+  destination {
+    cloud_run_service {
+      service = google_cloud_run_v2_service.emubench_agent.name
+      region  = google_cloud_run_v2_service.emubench_agent.location
+    }
+  }
+
+  service_account = google_service_account.cloud_run_sa.email
+
+  depends_on = [
+    google_project_service.eventarc,
+    google_cloud_run_v2_service.emubench_agent,
+    google_project_iam_member.cloud_run_eventarc_receiver,
+    google_project_iam_audit_config.firestore_audit
+  ]
+}
+
+resource "google_project_iam_audit_config" "firestore_audit" {
+  project = var.project_id
+  service = "datastore.googleapis.com"
+  
+  audit_log_config {
+    log_type = "ADMIN_READ"
+  }
+  
+  audit_log_config {
+    log_type = "DATA_READ"
+  }
+  
+  audit_log_config {
+    log_type = "DATA_WRITE"
+  }
 }

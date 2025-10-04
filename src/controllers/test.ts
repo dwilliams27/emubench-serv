@@ -47,11 +47,16 @@ export const setupExperiment = async (req: Request, res: Response) => {
         const bootConfigCopy = {
           ...runGroup.bootConfig
         };
-        bootConfigCopy.id = genId(BOOT_CONFIG_ID);
-        bootConfigCopy.testConfig.id = genId(TEST_ID);
         const job: EmuTestQueueJob = {
           id: genId(JOB_ID),
-          bootConfig: bootConfigCopy,
+          bootConfig: {
+            ...runGroup.bootConfig,
+            id: genId(BOOT_CONFIG_ID),
+            testConfig: {
+              ...bootConfigCopy.testConfig,
+              id: genId(TEST_ID)
+            }
+          },
           encryptedUserToken: cryptoService.encrypt(req.headers.authorization!.substring(7)),
           status: 'pending',
           error: "",
@@ -121,7 +126,6 @@ export const attemptTokenExchange = async (req: Request, res: Response) => {
 }
 
 export const getScreenshots = async (req: Request, res: Response) => {
-  console.log('[TEST] Getting screenshots');
   try {
     if (!req.params.testId) {
       throw createEmuError('Must specify testId');
