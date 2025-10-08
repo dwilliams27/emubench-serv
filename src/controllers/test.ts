@@ -27,13 +27,18 @@ export const setupExperiment = async (req: Request, res: Response) => {
     }
 
     const experimentId = genId(EXPERIMENT_ID);
-    const experiment: Omit<EmuExperiment, 'RESULTS'> = {
+    const experiment: EmuExperiment = {
       id: experimentId,
       name: body.experimentConfig.name,
       description: body.experimentConfig.description,
-      baseConfig: body.experimentConfig.baseConfig,
+      baseConfig: {
+        ...body.experimentConfig.baseConfig,
+        experimentId,
+      },
       totalTestRuns: body.experimentConfig.totalTestRuns,
       runGroups: body.experimentConfig.runGroups || [],
+      status: "pending",
+      completedTestRunIds: []
     };
 
     const totalTests = experiment.runGroups.reduce((sum, group) => sum + group.iterations, 0);
@@ -45,12 +50,13 @@ export const setupExperiment = async (req: Request, res: Response) => {
     for (const runGroup of experiment.runGroups) {
       for (let i = 0; i < runGroup.iterations; i++) {
         const bootConfigCopy = {
-          ...runGroup.bootConfig
+          ...experiment.baseConfig,
+          ...runGroup.baseConfigDelta,
         };
         const job: EmuTestQueueJob = {
           id: genId(JOB_ID),
           bootConfig: {
-            ...runGroup.bootConfig,
+            ...bootConfigCopy,
             id: genId(BOOT_CONFIG_ID),
             testConfig: {
               ...bootConfigCopy.testConfig,
@@ -59,7 +65,7 @@ export const setupExperiment = async (req: Request, res: Response) => {
           },
           encryptedUserToken: cryptoService.encrypt(req.headers.authorization!.substring(7)),
           status: 'pending',
-          error: "",
+          error: '',
           startedAt: null,
           completedAt: null
         };
@@ -87,6 +93,7 @@ export const setupTest = async (req: Request, res: Response) => {
   try {
     const bootConfig: EmuBootConfig = {
       id: genId(BOOT_CONFIG_ID),
+      experimentId: null,
       agentConfig: req.body.agentConfig,
       testConfig: { ...req.body.testConfig, id: testId },
       goalConfig: req.body.goalConfig,
@@ -130,11 +137,8 @@ export const getScreenshots = async (req: Request, res: Response) => {
     if (!req.params.testId) {
       throw createEmuError('Must specify testId');
     }
-    const activeTest = req.emuSession.activeTests[req.params.testId];
-    if (!activeTest) {
-      throw createEmuError(`No active test found for id ${req.params.testId}`);
-    }
-    const screenshots = await getScreenshotsFromTest(activeTest);
+    // TODO: Check if test belongs to user
+    const screenshots = await getScreenshotsFromTest(req.params.testId);
     res.send({ screenshots });
   } catch (error) {
     fhandleErrorResponse(error, req, res);
@@ -176,11 +180,11 @@ export const endTest = async (req: Request, res: Response) => {
   }
 }
 
-const getScreenshotsFromTest = async (activeTest: ActiveTest): Promise<Record<string, string>> => {
+const getScreenshotsFromTest = async (testId: string): Promise<Record<string, string>> => {
   let screenshots = {};
-  const testScreenshots = await testService.getScreenshots(activeTest.id);
+  const testScreenshots = await testService.getScreenshots(testId);
   const signedUrlsPromises = testScreenshots.map((screenshot) => new Promise(async (res) => {
-    const url = await gcpService.getSignedURL('emubench-sessions', `${activeTest.id}/ScreenShots/${screenshot}`);
+    const url = await gcpService.getSignedURL('emubench-sessions', `${testId}/ScreenShots/${screenshot}`);
     res([screenshot, url])
   }));
   const signedUrls = await Promise.all(signedUrlsPromises) as [string, string][];
@@ -198,18 +202,16 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     if (!req.params.testId) {
       throw createEmuError('Must specify testId');
     }
-    const activeTest = req.emuSession.activeTests[req.params.testId];
-    if (!activeTest) {
-      throw createEmuError(`No active test found for id ${req.params.testId}`);
-    }
+    // TODO: Check if test belongs to user
+    const testId = req.params.testId;
 
     // TODO: Batch reads
     const [testState, emulatorState, bootConfig, agentState, agentLogs] = await Promise.all([
-      freadTestState(activeTest.id),
-      freadEmulatorState(activeTest.id),
-      freadBootConfig(activeTest.id),
-      freadAgentState(activeTest.id),
-      freadAgentLogs(activeTest.id)
+      freadTestState(testId),
+      freadEmulatorState(testId),
+      freadBootConfig(testId),
+      freadAgentState(testId),
+      freadAgentLogs(testId)
     ]);
 
     if (!bootConfig) {
@@ -218,10 +220,10 @@ export const getEmuTestState = async (req: Request, res: Response) => {
 
     let screenshots = {};
     try {
-      screenshots = await getScreenshotsFromTest(activeTest);
+      screenshots = await getScreenshotsFromTest(testId);
       // Update screenshots in firebase if changed
       if (Object.keys(screenshots).length !== Object.keys(testState?.screenshots || {}).length) {
-        await fwriteTestState(activeTest.id, { ...testState!, screenshots });
+        await fwriteTestState(testId, { ...testState!, screenshots });
       }
     } catch (error) {
       console.log(`Error fetching screenshots: ${formatError(error)}`);

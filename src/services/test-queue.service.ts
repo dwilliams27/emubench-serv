@@ -1,9 +1,8 @@
 import { cryptoService } from "@/services/crypto.service";
 import { sessionService } from "@/services/session.service";
 import { testService } from "@/services/test.service";
-import { freadJobs, freadTestRuns, fwriteJobs } from "@/shared/services/resource-locator.service";
+import { fattemptClaimJob, fmarkJobComplete, freadJobs, freadTestRuns, fwriteExperiment, fwriteJobs } from "@/shared/services/resource-locator.service";
 import { EmuTestQueueJob } from "@/shared/types/experiments";
-import { EmuFirebaseTransactionFunction } from "@/shared/types/resource-locator";
 import { EmuTestRun } from "@/shared/types/test-run";
 import { FieldValue } from "firebase-admin/firestore";
 
@@ -55,23 +54,10 @@ export class TestQueueService {
         this.stop();
         return null;
       }
-      const jobDoc = jobs[0];
-
-      const readJobTransactionFunction = await freadJobs([jobDoc.id], { transactionFunctions: [], atomic: true }) as EmuFirebaseTransactionFunction[];
-      const wrappedReadFunction = async (transaction: FirebaseFirestore.Transaction) => {
-        const result = await readJobTransactionFunction[0](transaction);
-        if (result && result[0] && (result[0] as EmuTestQueueJob).status === 'pending' && !this.activeJobs.has(jobDoc.id)) {
-          return result;
-        }
-        throw Error('Job already claimed');
-      }
-      const success = await fwriteJobs(
-        [{ id: jobDoc.id, status: 'running', startedAt: FieldValue.serverTimestamp() }],
-        { update: true, atomic: true, transactionFunctions: [wrappedReadFunction], runTransaction: true }
-      ) as boolean;
-      
-      if (success) {
-        return jobDoc;
+      const jobId = jobs[0].id;
+      const claimedJob = await fattemptClaimJob(jobId);
+      if (claimedJob) {
+        return claimedJob;
       }
       return null;
     } catch (error) {
@@ -96,7 +82,7 @@ export class TestQueueService {
       let result: EmuTestRun | null = null;
       while (!result) {
         try {
-          const testRuns = await freadTestRuns(job.bootConfig.testConfig.id);
+          const testRuns = await freadTestRuns([job.bootConfig.testConfig.id]);
           if (testRuns && testRuns.length > 0) {
             result = testRuns[0];
             break;
@@ -106,12 +92,8 @@ export class TestQueueService {
         }
         await this.sleep(10_000);
       }
-      
-      await fwriteJobs([{
-        id: job.id,
-        status: 'completed',
-        completedAt: FieldValue.serverTimestamp()
-      }], { update: true });
+
+      await fmarkJobComplete(job.id, job.bootConfig.experimentId!, result);
       
       console.log(`[Work][Slot ${slotId}] Job ${job.id} completed`);
     } catch (error) {

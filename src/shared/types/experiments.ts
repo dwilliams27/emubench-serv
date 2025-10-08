@@ -7,14 +7,13 @@ export interface EmuExperiment {
   description: string;
   baseConfig: EmuBootConfig;
   totalTestRuns: number;
+  status: 'pending' | 'running' | 'error' | 'completed';
   runGroups: EmuExperimentRunGroup[];
-
-  RESULTS: EmuTestRun[]; 
+  completedTestRunIds: string[];
 }
 
 export interface EmuExperimentRunGroup {
-  id: string;
-  bootConfig: EmuBootConfig;
+  baseConfigDelta: Partial<EmuBootConfig>;
   iterations: number;
 }
 

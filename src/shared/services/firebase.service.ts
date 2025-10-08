@@ -1,5 +1,5 @@
-import { DocumentWithId, FirebasePathParam } from '@/shared/types/firebase';
-import { EmuReadOptions, EmuWriteOptions } from '@/shared/types/resource-locator';
+import { FirebasePathParam } from '@/shared/types/firebase';
+import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions } from '@/shared/types/resource-locator';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
 
@@ -100,15 +100,13 @@ export class FirebaseService {
   }
 
   async writeTransaction(
-    payload: DocumentWithId[],
     transaction: FirebaseFirestore.Transaction,
-    pathParams: FirebasePathParam[],
     options: EmuWriteOptions
   ) {
-    const refs = this.drillDownPath(pathParams);
+    const refs = this.drillDownPath(options.pathParams);
 
     if (Array.isArray(refs)) {
-      payload.forEach(item => {
+      options.payload.forEach(item => {
         const ref = refs.find(r => r.id === item.id);
         if (!ref) {
           throw new Error(`No matching document reference found for id: ${item.id}`);
@@ -129,7 +127,7 @@ export class FirebaseService {
         }
       });
     } else {
-      payload.forEach(item => {
+      options.payload.forEach(item => {
         let ref: DocumentReference = refs instanceof CollectionReference
           ? refs.doc(item.id)
           : refs;
@@ -157,25 +155,9 @@ export class FirebaseService {
       throw Error('At least one path param (collection/docId) is required');
     }
 
-    if (options.runTransaction) {
-      const finalPromise = (transaction: FirebaseFirestore.Transaction) => this.writeTransaction(payload, transaction, pathParams, options);
-      await this.db.runTransaction(async (transaction) => {
-        await Promise.all([...(options.transactionFunctions?.map((func) => func(transaction)) || []), finalPromise(transaction)]);
-      });
-      return true;
-    }
-
     if (options.atomic) {
-      if (!!options.transactionFunctions) {
-        return [
-          ...options.transactionFunctions,
-          async(transaction: FirebaseFirestore.Transaction) => {
-            await this.writeTransaction(payload, transaction, pathParams, options);
-          }
-        ];
-      }
       await this.db.runTransaction(async (transaction) => {
-        await this.writeTransaction(payload, transaction, pathParams, options);
+        await this.writeTransaction(transaction, options);
       });
     } else {
       const batch = this.db.batch();
@@ -237,27 +219,25 @@ export class FirebaseService {
     return await this.getData(ref, transaction, options.where);
   }
 
+  async runTransactions(
+    transactionFunctions: EmuFirebaseTransactionFunction[]
+  ) {
+    let results: { id: string }[] = [];
+    await this.db.runTransaction(async (transaction) => {
+      let metadata: Record<string, any> = {};
+      for (let i = 0; i < transactionFunctions.length; i++) {
+        results.push(...(await transactionFunctions[i](transaction, metadata) || []));
+      }
+    });
+    return results;
+  }
+
   async read(options: EmuReadOptions) {
     if (options.pathParams.length < 1) {
       throw Error('At least one path param (collection/docId) is required');
     }
-    if (options.runTransaction) {
-      const finalPromise = (transaction: FirebaseFirestore.Transaction) => this.readTransaction(transaction, options);
-      await this.db.runTransaction(async (transaction) => {
-        await Promise.all([...(options.transactionFunctions?.map((func) => func(transaction)) || []), finalPromise(transaction)]);
-      });
-      return true;
-    }
 
     if (options.atomic) {
-      if (!!options.transactionFunctions) {
-        return [
-          ...options.transactionFunctions,
-          async (transaction: FirebaseFirestore.Transaction) => {
-            return await this.readTransaction(transaction, options);
-          }
-        ];
-      }
       return await this.db.runTransaction(async (transaction) => {
         return await this.readTransaction(transaction, options);
       });

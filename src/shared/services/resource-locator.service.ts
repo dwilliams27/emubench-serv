@@ -6,6 +6,7 @@ import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions } from 
 import { formatError } from "@/shared/utils/error";
 import { EmuExperiment, EmuTestQueueJob } from "@/shared/types/experiments";
 import { EmuAgentJob } from "@/shared/types/agent";
+import { FieldValue } from "firebase-admin/firestore";
 
 const currentService: EmuServiceName = (process.env.SERVICE_NAME as EmuServiceName) || 'UNKNOWN';
 // For now shallow, only 1 level beyond testId
@@ -49,7 +50,7 @@ function pathParamsToString(pathParams: FirebasePathParam[]) {
 };
 
 async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuReadOptions): Promise<(T | EmuFirebaseTransactionFunction)[] | null> {
-  const { pathParams, where, atomic, transactionFunctions } = options;
+  const { pathParams, where, atomic } = options;
   const objectPath = pathParamsToString(pathParams);
   if (pathParams[-1]?.docIds) {
     const cacheKey = generateCacheKey(pathParams);
@@ -64,11 +65,7 @@ async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuRead
       pathParams,
       where,
       atomic,
-      transactionFunctions
     });
-    if (typeof objects === 'function') {
-      return [...(transactionFunctions || []), objects];
-    }
     return objects as unknown as T[];
   } catch (error) {
     throw new Error(`[RecL] Error reading ${objectPath}: ${formatError(error)}`);
@@ -85,9 +82,6 @@ async function writeObjectToFirebase(options: EmuWriteOptions): Promise<boolean 
         const cacheKey = generateCacheKey([...pathParams.slice(0, -1), { collection: pathParams[-1].collection, docIds: [p.id] }]);
         FB_CACHE[cacheKey] = payload;
       });
-    }
-    if (typeof result === 'function') {
-      return [...(options.transactionFunctions || []), result];
     }
     return true;
   } catch (error) {
@@ -295,11 +289,12 @@ export async function fwriteNewTrace(traceId: string, testId: string, options: P
   });
 }
 
-export async function freadTestRuns(testId: string): Promise<EmuTestRun[] | null> {
+export async function freadTestRuns(ids: string[], options: Partial<EmuReadOptions> = {}): Promise<EmuTestRun[] | null> {
   const result = await readObjectFromFirebase<FEmuTestRun>({
     pathParams: [
-      { collection: FB_1.TEST_RUNS, docIds: [testId] },
+      { collection: FB_1.TEST_RUNS, docIds: ids.length > 0 ? ids : undefined },
     ],
+    ...options
   });
   return result as EmuTestRun[] | null;
 }
@@ -313,15 +308,16 @@ export async function fwriteTestRun(testRun: EmuTestRun, options: Partial<EmuWri
   });
 }
 
-export async function freadExperiment(experimentId: string): Promise<EmuExperiment[] | null> {
+export async function freadExperiment(experimentId: string, options: Partial<EmuReadOptions> = {}): Promise<EmuExperiment[] | null | EmuFirebaseTransactionFunction[]> {
   const result = await readObjectFromFirebase<FEmuExperiment>({
     pathParams: [
       { collection: FB_1.EXPERIMENTS, docIds: [experimentId] },
     ],
+    ...options
   });
   return result as EmuExperiment[] | null;
 }
-export async function fwriteExperiment(experiment: Omit<EmuExperiment, 'RESULTS'>, options: Partial<EmuWriteOptions> = {}) {
+export async function fwriteExperiment(experiment: Partial<EmuExperiment> & { id: string }, options: Partial<EmuWriteOptions> = {}) {
   return writeObjectToFirebase({
     pathParams: [
       { collection: FB_1.EXPERIMENTS }
@@ -351,6 +347,86 @@ export async function fwriteJobs(jobs: (Partial<EmuTestQueueJob> & { id: string 
     payload: jobs,
     ...options
   });
+}
+export async function fattemptClaimJob(jobId: string): Promise<EmuTestQueueJob | null> {
+  const jobTransactionFunction = async (transaction: FirebaseFirestore.Transaction, metadata: Record<string, any>) => {
+    const result = await firebaseService.readTransaction(
+      transaction,
+      {
+        pathParams: [
+          { collection: FB_1.TEST_QUEUE, docIds: [jobId] }
+        ],
+      }
+    ) as EmuTestQueueJob[];
+    if (!result || result.length === 0 || result[0].status !== 'pending') {
+      throw new Error('Job already claimed');
+    }
+    const jobDoc = result[0];
+    const startedAt = FieldValue.serverTimestamp();
+    await firebaseService.writeTransaction(
+      transaction,
+      {
+        pathParams: [
+          { collection: FB_1.TEST_QUEUE, docIds: [jobId] }
+        ],
+        payload: [{ id: jobId, status: 'running', startedAt }],
+        update: true
+      }
+    );
+    return [{ ...jobDoc, status: 'running', startedAt } as EmuTestQueueJob];
+  };
+  const success = await firebaseService.runTransactions([jobTransactionFunction]);
+  if (success) {
+    return success[0] as EmuTestQueueJob;
+  }
+  return null;
+}
+export async function fmarkJobComplete(jobId: string, experimentId: string | null, testRun: EmuTestRun | null): Promise<void> {
+  const jobUpdatePromise = fwriteJobs([{
+      id: jobId,
+      status: 'completed',
+      completedAt: FieldValue.serverTimestamp()
+    }], { update: true }
+  );
+  if (!experimentId) {
+    await jobUpdatePromise;
+    return;
+  }
+
+  const experimentTransactionFunction = async (transaction: FirebaseFirestore.Transaction, metadata: Record<string, any>) => {
+    const result = await firebaseService.readTransaction(
+      transaction,
+      {
+        pathParams: [
+          { collection: FB_1.EXPERIMENTS, docIds: [experimentId] }
+        ],
+      }
+    ) as EmuExperiment[];
+    if (!result || result.length === 0) {
+      throw new Error('Experiment not found');
+    }
+    const experiment = result[0];
+    const experimentComplete = experiment.completedTestRunIds.length + 1 >= experiment.totalTestRuns;
+    const experimentUpdate = {
+      id: experimentId,
+      status: experimentComplete ? 'completed' : experiment.status,
+      completedTestRunIds: testRun ? [...experiment.completedTestRunIds, testRun.id] : experiment.completedTestRunIds,
+    };
+    await firebaseService.writeTransaction(
+      transaction,
+      {
+        pathParams: [
+          { collection: FB_1.EXPERIMENTS, docIds: [experimentId] }
+        ],
+        payload: [experimentUpdate],
+        update: true
+      }
+    );
+  };
+  await Promise.all([
+    jobUpdatePromise,
+    firebaseService.runTransactions([experimentTransactionFunction])
+  ]);
 }
 
 
