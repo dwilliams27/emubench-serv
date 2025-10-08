@@ -37,7 +37,7 @@ export const setupExperiment = async (req: Request, res: Response) => {
       },
       totalTestRuns: body.experimentConfig.totalTestRuns,
       runGroups: body.experimentConfig.runGroups || [],
-      status: "pending",
+      status: "running",
       completedTestRunIds: []
     };
 

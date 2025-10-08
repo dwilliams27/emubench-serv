@@ -72,7 +72,7 @@ async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuRead
   }
 }
 
-async function writeObjectToFirebase(options: EmuWriteOptions): Promise<boolean | EmuFirebaseTransactionFunction[]> {
+async function writeObjectToFirebase(options: EmuWriteOptions): Promise<boolean> {
   const { pathParams, payload } = options;
   throwIfCantWrite(pathParams[-1]?.collection);
   try {
@@ -382,14 +382,13 @@ export async function fattemptClaimJob(jobId: string): Promise<EmuTestQueueJob |
   return null;
 }
 export async function fmarkJobComplete(jobId: string, experimentId: string | null, testRun: EmuTestRun | null): Promise<void> {
-  const jobUpdatePromise = fwriteJobs([{
-      id: jobId,
-      status: 'completed',
-      completedAt: FieldValue.serverTimestamp()
-    }], { update: true }
-  );
+  const deleteJobPromise = firebaseService.delete({
+    pathParams: [
+      { collection: FB_1.TEST_QUEUE, docIds: [jobId] }
+    ]
+  });
   if (!experimentId) {
-    await jobUpdatePromise;
+    await deleteJobPromise;
     return;
   }
 
@@ -424,7 +423,7 @@ export async function fmarkJobComplete(jobId: string, experimentId: string | nul
     );
   };
   await Promise.all([
-    jobUpdatePromise,
+    deleteJobPromise,
     firebaseService.runTransactions([experimentTransactionFunction])
   ]);
 }

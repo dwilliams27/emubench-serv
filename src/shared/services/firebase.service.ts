@@ -246,6 +246,26 @@ export class FirebaseService {
     const ref = this.drillDownPath(options.pathParams);
     return await this.getData(ref, undefined, options.where);
   }
+
+  async delete(options: EmuReadOptions) {
+    const refs = this.drillDownPath(options.pathParams);
+
+    const batch = this.db.batch();
+
+    if (Array.isArray(refs)) {
+      refs.forEach(ref => {
+        batch.delete(ref);
+      });
+    } else {
+      if (refs instanceof CollectionReference) {
+        throw new Error('Not deleting a collection buddy');
+      }
+      batch.delete(refs);
+    }
+
+    await batch.commit();
+    return true;
+  }
 }
 
 const firebaseService = new FirebaseService();
