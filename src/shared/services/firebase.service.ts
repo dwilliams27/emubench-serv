@@ -1,7 +1,7 @@
 import { FirebasePathParam } from '@/shared/types/firebase';
-import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions } from '@/shared/types/resource-locator';
+import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions, FieldUpdatePayload } from '@/shared/types/resource-locator';
 import { initializeApp, getApps } from 'firebase-admin/app';
-import { FieldValue, getFirestore, CollectionReference, DocumentReference } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore, CollectionReference, DocumentReference, FieldPath } from 'firebase-admin/firestore';
 
 export class FirebaseService {
   private db: FirebaseFirestore.Firestore;
@@ -11,6 +11,29 @@ export class FirebaseService {
       initializeApp();
     }
     this.db = getFirestore();
+  }
+
+  private createFieldPath(dotPath: string): FieldPath {
+    return new FieldPath(...dotPath.split('.'));
+  }
+
+  private convertFieldPathsForUpdate(fields: Record<string, any>): any {
+    const updateData: any = {};
+    
+    for (const [dotPath, value] of Object.entries(fields)) {
+      if (dotPath.includes('.')) {
+        const fieldPath = this.createFieldPath(dotPath);
+        updateData[fieldPath as any] = value;
+      } else {
+        updateData[dotPath] = value;
+      }
+    }
+    
+    return updateData;
+  }
+
+  private isFieldUpdatePayload(payload: any[]): payload is FieldUpdatePayload[] {
+    return payload.length > 0 && 'fields' in payload[0] && typeof payload[0].fields === 'object';
   }
 
   drillDownPath(params: FirebasePathParam[]): CollectionReference | DocumentReference | DocumentReference[] {
@@ -104,6 +127,7 @@ export class FirebaseService {
     options: EmuWriteOptions
   ) {
     const refs = this.drillDownPath(options.pathParams);
+    const isFieldUpdate = options.useFieldPaths && this.isFieldUpdatePayload(options.payload);
 
     if (Array.isArray(refs)) {
       options.payload.forEach(item => {
@@ -113,11 +137,18 @@ export class FirebaseService {
         }
 
         if (options.update) {
-          const { id, ...updateData } = item;
-          transaction.update(ref, {
-            ...updateData,
-            updatedAt: FieldValue.serverTimestamp()
-          });
+          if (isFieldUpdate) {
+            const fieldItem = item as FieldUpdatePayload;
+            const updateData = this.convertFieldPathsForUpdate(fieldItem.fields);
+            updateData.updatedAt = FieldValue.serverTimestamp();
+            transaction.update(ref, updateData);
+          } else {
+            const { id, ...updateData } = item;
+            transaction.update(ref, {
+              ...updateData,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          }
         } else {
           transaction.set(ref, {
             ...item,
@@ -133,11 +164,18 @@ export class FirebaseService {
           : refs;
 
         if (options.update) {
-          const { id, ...updateData } = item;
-          transaction.update(ref, {
-            ...updateData,
-            updatedAt: FieldValue.serverTimestamp()
-          });
+          if (isFieldUpdate) {
+            const fieldItem = item as FieldUpdatePayload;
+            const updateData = this.convertFieldPathsForUpdate(fieldItem.fields);
+            updateData.updatedAt = FieldValue.serverTimestamp();
+            transaction.update(ref, updateData);
+          } else {
+            const { id, ...updateData } = item;
+            transaction.update(ref, {
+              ...updateData,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          }
         } else {
           transaction.set(ref, {
             ...item,
@@ -155,59 +193,68 @@ export class FirebaseService {
       throw Error('At least one path param (collection/docId) is required');
     }
 
-    if (options.atomic) {
-      await this.db.runTransaction(async (transaction) => {
-        await this.writeTransaction(transaction, options);
+    const batch = this.db.batch();
+    const refs = this.drillDownPath(pathParams);
+    const isFieldUpdate = options.useFieldPaths && this.isFieldUpdatePayload(options.payload);
+
+    if (Array.isArray(refs)) {
+      payload.forEach(item => {
+        const ref = refs.find(r => r.id === item.id);
+        if (!ref) {
+          throw new Error(`No matching document reference found for id: ${item.id}`);
+        }
+
+        if (options.update) {
+          if (isFieldUpdate) {
+            const fieldItem = item as FieldUpdatePayload;
+            const updateData = this.convertFieldPathsForUpdate(fieldItem.fields);
+            updateData.updatedAt = FieldValue.serverTimestamp();
+            batch.update(ref, updateData);
+          } else {
+            const { id, ...updateData } = item;
+            batch.update(ref, {
+              ...updateData,
+              updatedAt: FieldValue.serverTimestamp()
+            });
+          }
+        } else {
+          batch.set(ref, {
+            ...item,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        }
       });
     } else {
-      const batch = this.db.batch();
-      const refs = this.drillDownPath(pathParams);
+      payload.forEach(item => {
+        let ref: DocumentReference = refs instanceof CollectionReference
+          ? refs.doc(item.id)
+          : refs;
 
-      if (Array.isArray(refs)) {
-        payload.forEach(item => {
-          const ref = refs.find(r => r.id === item.id);
-          if (!ref) {
-            throw new Error(`No matching document reference found for id: ${item.id}`);
-          }
-
-          if (options.update) {
+        if (options.update) {
+          if (isFieldUpdate) {
+            const fieldItem = item as FieldUpdatePayload;
+            const updateData = this.convertFieldPathsForUpdate(fieldItem.fields);
+            updateData.updatedAt = FieldValue.serverTimestamp();
+            batch.update(ref, updateData);
+          } else {
             const { id, ...updateData } = item;
             batch.update(ref, {
               ...updateData,
               updatedAt: FieldValue.serverTimestamp()
             });
-          } else {
-            batch.set(ref, {
-              ...item,
-              createdAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp()
-            });
           }
-        });
-      } else {
-        payload.forEach(item => {
-          let ref: DocumentReference = refs instanceof CollectionReference
-            ? refs.doc(item.id)
-            : refs;
-
-          if (options.update) {
-            const { id, ...updateData } = item;
-            batch.update(ref, {
-              ...updateData,
-              updatedAt: FieldValue.serverTimestamp()
-            });
-          } else {
-            batch.set(ref, {
-              ...item,
-              createdAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp()
-            });
-          }
-        });
-      }
-
-      await batch.commit();
+        } else {
+          batch.set(ref, {
+            ...item,
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
+          });
+        }
+      });
     }
+
+    await batch.commit();
     return true;
   }
 
@@ -237,12 +284,6 @@ export class FirebaseService {
       throw Error('At least one path param (collection/docId) is required');
     }
 
-    if (options.atomic) {
-      return await this.db.runTransaction(async (transaction) => {
-        return await this.readTransaction(transaction, options);
-      });
-    }
-
     const ref = this.drillDownPath(options.pathParams);
     return await this.getData(ref, undefined, options.where);
   }
@@ -265,6 +306,15 @@ export class FirebaseService {
 
     await batch.commit();
     return true;
+  }
+
+  async updateFields(pathParams: FirebasePathParam[], updates: FieldUpdatePayload[]) {
+    return await this.write({
+      pathParams,
+      payload: updates,
+      update: true,
+      useFieldPaths: true
+    });
   }
 }
 

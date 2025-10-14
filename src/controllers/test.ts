@@ -1,11 +1,10 @@
 import { gcpService } from "@/services/gcp.service";
 import { testService } from "@/services/test.service";
-import { ActiveTest } from "@/types/session";
 import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse } from "@/shared/types";
 import { BOOT_CONFIG_ID, EXPERIMENT_ID, genId, JOB_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestResults, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteExperiment, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadTest, freadTestResults, freadTraceLogs, freadTracesByTestId, fwriteExperiment, fwriteJobs, fwriteTest } from "@/shared/services/resource-locator.service";
 import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
 import { EmuExperiment, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
@@ -155,7 +154,6 @@ export const endTest = async (req: Request, res: Response) => {
   const testId = req.body.testId;
   fwriteFormattedTraceLog(`End test recieved`, req.metadata?.trace);
   try {
-    await freadTestState
     if (!testId || !req.emuSession.activeTests[testId]) {
       throw createEmuError('Must pass valid testId');
     }
@@ -165,19 +163,16 @@ export const endTest = async (req: Request, res: Response) => {
     }
     await gcpService.deleteService(containerName);
 
-    const [agentState, emulatorState] = await Promise.all([
-      freadAgentState(testId),
-      freadEmulatorState(testId),
-    ]);
-    if (agentState) {
-      agentState.status = agentState.status === 'error' ? agentState.status : 'finished';
-      await fwriteAgentState(testId, agentState);
+    const test = await freadTest(testId);
+    if (!test) {
+      throw createEmuError('Test not found');
     }
-    if (emulatorState) {
-      emulatorState.status = emulatorState.status === 'error' ? emulatorState.status : 'finished';
-      await fwriteEmulatorState(testId, emulatorState);
-    }
-    await fwriteTestState(testId, { id: testId, status: 'finished' }, { update: true });
+
+    test.agentState.status = test.agentState.status === 'error' ? test.agentState.status : 'finished';
+    test.emulatorState.status = test.emulatorState.status === 'error' ? test.emulatorState.status : 'finished';
+
+    await fwriteTest(test);
+
     console.log(`[TEST] Test ${testId} deleted`);
     fwriteFormattedTraceLog(`Test successfuly ended`, req.metadata?.trace);
     res.status(200).send();
@@ -212,15 +207,16 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     const testId = req.params.testId;
 
     // TODO: Batch reads
-    const [testState, emulatorState, bootConfig, agentState, agentLogs] = await Promise.all([
-      freadTestState(testId),
-      freadEmulatorState(testId),
-      freadBootConfig(testId),
-      freadAgentState(testId),
+    const [test, agentLogs] = await Promise.all([
+      freadTest(testId),
       freadAgentLogs(testId)
     ]);
 
-    if (!bootConfig) {
+    if (!test) {
+      throw createEmuError(`No test found for id ${testId}`);
+    }
+
+    if (!test.bootConfig) {
       throw createEmuError('Failed to read BOOT_CONFIG');
     };
 
@@ -228,19 +224,20 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     try {
       screenshots = await getScreenshotsFromTest(testId);
       // Update screenshots in firebase if changed
-      if (Object.keys(screenshots).length !== Object.keys(testState?.screenshots || {}).length) {
-        await fwriteTestState(testId, { ...testState!, screenshots });
+      if (Object.keys(screenshots).length !== Object.keys(test.testState?.screenshots || {}).length) {
+        test.testState.screenshots = { ...test.testState.screenshots, ...screenshots };
+        await fwriteTest(test);
       }
     } catch (error) {
       console.log(`Error fetching screenshots: ${formatError(error)}`);
     }
 
     const response: EmuActiveTestReponse = {
-      testState,
-      agentState,
+      testState: test.testState,
+      agentState: test.agentState,
       agentLogs,
-      emulatorState,
-      bootConfig,
+      emulatorState: test.emulatorState,
+      bootConfig: test.bootConfig,
     };
     res.send(response);
   } catch (error) {

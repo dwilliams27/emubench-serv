@@ -3,7 +3,7 @@ import { mkdir, readdir } from "fs/promises";
 import path from "path";
 import { createEmuError, formatError } from "@/shared/utils/error";
 import { EmuBootConfig, EmuTestConfig, EmuTestState } from "@/shared/types";
-import { freadEmulatorState, freadSharedTestState, fwriteAgentJobs, fwriteAgentState, fwriteBootConfig, fwriteEmulatorState, fwriteSharedTestState, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { fwriteAgentJobs, fwriteTest, fwriteTestFields } from "@/shared/services/resource-locator.service";
 import { AGENT_JOB_ID, AGENT_STATE_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID } from "@/shared/utils/id";
 import { containerService } from "@/services/container.service";
 
@@ -38,10 +38,6 @@ export class TestService {
     if (!writeSessionFolder) {
       throw createEmuError('Failed to create session folder on FUSE');
     }
-    const writeConfig = await fwriteBootConfig(testId, bootConfig);
-    if (!writeConfig) {
-      throw createEmuError('Failed to write BOOT_CONFIG');
-    }
 
     const testState: EmuTestState = {
       id: testId,
@@ -49,10 +45,6 @@ export class TestService {
       stateHistory: {},
       screenshots: {}
     };
-    const testWrite = await fwriteTestState(testId, testState);
-    if (!testWrite) {
-      throw createEmuError('Failed to write TEST_STATE');
-    }
 
     const sharedTestState = {
       id: genId(SHARED_TEST_STATE_ID)
@@ -63,10 +55,12 @@ export class TestService {
       exchangeToken: genId(EXCHANGE_TOKEN_ID),
     };
 
-    const sharedWrite = await fwriteSharedTestState(testId, sharedTestState);
-    if (!sharedWrite) {
-      throw createEmuError('Failed to write SHARED_STATE');
-    }
+    const result = await fwriteTest({
+      id: testId,
+      bootConfig,
+      testState,
+      sharedState: sharedTestState,
+    });
 
     // Deploy game and agent in background
     this.asyncEmulatorSetup(activeTest, bootConfig.testConfig);
@@ -87,28 +81,18 @@ export class TestService {
       activeTest.container = service;
       activeTest.googleToken = identityToken;
   
-      // TODO: Flatten firebase schema this is stupid
-      const emulatorState = await freadEmulatorState(activeTest.id);
-      const sharedTestState = await freadSharedTestState(activeTest.id);
-      if (emulatorState && emulatorState.status !== 'error' && sharedTestState) {
-        await fwriteSharedTestState(
-          activeTest.id,
-          {
-            ...sharedTestState,
-            exchangeToken: activeTest.exchangeToken,
-            emulatorUri: service.uri!
-          }
-        );
-      } else {
-        throw createEmuError('Failed to read emulator or shared state');
+      const result = await fwriteTestFields(activeTest.id, {
+        'sharedState.exchangeToken': activeTest.exchangeToken,
+        'sharedState.emulatorUri': service.uri,
+      });
+      if (!result) {
+        throw createEmuError('Failed to write test fields');
       }
     } catch (error) {
       console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
-      const emulatorState = await freadEmulatorState(activeTest.id);
-      if (emulatorState) {
-        emulatorState.status = 'error';
-        await fwriteEmulatorState(activeTest.id, emulatorState);
-      }
+      const result = await fwriteTestFields(activeTest.id, {
+        'emulatorState.status': 'error',
+      });
     }
   }
   
@@ -125,7 +109,7 @@ export class TestService {
         startedAt: null,
         completedAt: null,
       }]);
-      await fwriteAgentState(activeTest.id, { id: genId(AGENT_STATE_ID), status: 'booting' as const });
+      await fwriteTestFields(activeTest.id, { 'agentState': { id: genId(AGENT_STATE_ID), status: 'booting' as const } });
     } catch (error) {
       console.error(`[TEST] Error setting up test ${activeTest.id} ${formatError(error)}`);
     }
