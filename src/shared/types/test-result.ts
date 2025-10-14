@@ -1,13 +1,21 @@
 import { EmuCondition, EmuConditionPrimitiveResult } from "@/shared/conditions/types";
 import { EmuBootConfig, EmuLogItem } from "@/shared/types";
 
-export interface EmuTestRun {
+export interface EmuTestResult {
   id: string;
   experimentId: string | null;
+  experimentRunGroupId: string | null;
   history: EmuHistorySlice[];
   bootConfig: EmuBootConfig;
-  result: EmuTestResult;
+  data: EmuTestResultData;
 };
+
+export interface EmuTestResultData {
+  emuCondition: EmuCondition;
+  conditionResult: 'passed' | 'failed' | 'error';
+  conditionPrimitiveResult: EmuConditionPrimitiveResult;
+  errorDetails: string;
+}
 
 export interface EmuHistorySlice {
   id: string;
@@ -25,10 +33,3 @@ export interface EmuHistoryAtom {
   log?: EmuLogItem;
   memoryWatch?: Record<string, any>;
 };
-
-export interface EmuTestResult {
-  emuCondition: EmuCondition;
-  conditionResult: 'passed' | 'failed' | 'error';
-  conditionPrimitiveResult: EmuConditionPrimitiveResult;
-  errorDetails: string;
-}

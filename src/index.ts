@@ -28,6 +28,7 @@ app.get('/health', (req, res) => {
 
 // test-orx
 app.get('/test-orx/tests/:testId', [firebaseAuthMiddleware, traceMiddleware], testController.getEmuTestState);
+app.get('/test-orx/history/:testResultId', [firebaseAuthMiddleware, traceMiddleware], testController.getTestResult);
 app.post('/test-orx/setup', [firebaseAuthMiddleware, traceMiddleware], testController.setupTest);
 app.post('/test-orx/setup-experiment', [firebaseAuthMiddleware, traceMiddleware], testController.setupExperiment);
 app.post('/test-orx/end', [firebaseAuthMiddleware, traceMiddleware], testController.endTest);

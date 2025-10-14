@@ -1,9 +1,9 @@
 import { cryptoService } from "@/services/crypto.service";
 import { sessionService } from "@/services/session.service";
 import { testService } from "@/services/test.service";
-import { fattemptClaimJob, fmarkJobComplete, freadJobs, freadTestRuns, fwriteExperiment, fwriteJobs } from "@/shared/services/resource-locator.service";
+import { fattemptClaimJob, fmarkJobComplete, freadJobs, freadTestResults, fwriteJobs } from "@/shared/services/resource-locator.service";
 import { EmuTestQueueJob } from "@/shared/types/experiments";
-import { EmuTestRun } from "@/shared/types/test-run";
+import { EmuTestResult } from "@/shared/types/test-result";
 import { FieldValue } from "firebase-admin/firestore";
 
 export class TestQueueService {
@@ -79,12 +79,12 @@ export class TestQueueService {
       }
       session.activeTests[job.bootConfig.testConfig.id] = test;
 
-      let result: EmuTestRun | null = null;
+      let result: EmuTestResult | null = null;
       while (!result) {
         try {
-          const testRuns = await freadTestRuns([job.bootConfig.testConfig.id]);
-          if (testRuns && testRuns.length > 0) {
-            result = testRuns[0];
+          const testResults = await freadTestResults([job.bootConfig.testConfig.id]);
+          if (testResults && testResults.length > 0) {
+            result = testResults[0];
             break;
           }
         } catch (error) {
@@ -121,5 +121,5 @@ export class TestQueueService {
   }
 }
 
-const testQueueService = new TestQueueService(3);
+const testQueueService = new TestQueueService(10);
 export { testQueueService };

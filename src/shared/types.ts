@@ -1,4 +1,5 @@
 import { EmuCondition } from "@/shared/conditions/types";
+import { EmuTestResult } from "@/shared/types/test-result";
 
 export interface EmuLogItem {
   text: string;
@@ -10,6 +11,9 @@ export interface EmuLogItem {
 
     toolName?: string;
     toolPayload?: any;
+
+    contextMemWatchValues?: Record<string, string>;
+    endStateMemWatchValues?: Record<string, string>;
   };
 };
 
@@ -22,6 +26,7 @@ export interface EmuLogBlock {
 export interface EmuBootConfig {
   id: string;
   experimentId: string | null;
+  experimentRunGroupId: string | null;
   agentConfig: EmuAgentConfig;
   testConfig: EmuTestConfig;
   goalConfig: EmuGoalConfig;
@@ -43,11 +48,6 @@ export interface EmuTestConfig {
   endStateMemWatches: Record<string, EmuMemoryWatch>;
 };
 
-export interface EmuTask {
-  name: string;
-  description: string;
-};
-
 export interface EmuAgentConfig {
   systemPrompt: string;
   gameContext: string;
@@ -55,7 +55,8 @@ export interface EmuAgentConfig {
   model: string;
   maxIterations: number;
   temperature: number;
-  task: EmuTask;
+  taskName: string;
+  taskDescription: string;
 };
 
 export interface EmuGoalConfig {
@@ -98,6 +99,14 @@ export interface EmuActiveTestReponse {
 export interface EmuGetTraceLogsResponse {
   traces: EmuTrace[];
 };
+
+export interface EmuGetTestHistoryResponse {
+  testResult: EmuTestResult;
+}
+
+export interface EmuSetupExperimentResponse {
+  experimentId: string;
+}
 
 export interface EmuTurn {
   iteration: number;
@@ -146,3 +155,7 @@ export class EmuError extends Error {
 };
 
 export const EMU_TRACE_HEADER = 'x-emubench-trace-id';
+
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};

@@ -1,5 +1,4 @@
-import { EmuBootConfig } from "@/shared/types";
-import { EmuTestRun } from "@/shared/types/test-run";
+import { DeepPartial, EmuAgentState, EmuBootConfig, EmuEmulatorState } from "@/shared/types";
 
 export interface EmuExperiment {
   id: string;
@@ -13,7 +12,9 @@ export interface EmuExperiment {
 }
 
 export interface EmuExperimentRunGroup {
-  baseConfigDelta: Partial<EmuBootConfig>;
+  name: string;
+  id: string;
+  baseConfigDelta: DeepPartial<EmuBootConfig>;
   iterations: number;
 }
 
@@ -28,9 +29,14 @@ export interface EmuTestQueueJob {
 }
 
 export interface EmuSetupExperimentRequest {
-  experimentConfig: Omit<EmuExperiment, 'id' | 'RESULTS'>;
+  experimentConfig: Omit<EmuExperiment, 'id'>;
 }
 
 export interface EmuSetupExperimentResponse {
   experimentId: string;
+}
+
+export interface EmuTestSummary {
+  agentState: EmuAgentState;
+  emulatorState: EmuEmulatorState;
 }

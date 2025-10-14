@@ -1,7 +1,7 @@
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
 import { EmuAgentJob } from "@/shared/types/agent";
 import { EmuExperiment, EmuTestQueueJob } from "@/shared/types/experiments";
-import { EmuTestRun } from "@/shared/types/test-run";
+import { EmuTestResult } from "@/shared/types/test-result";
 
 export interface DocumentWithId {
   id: string;
@@ -22,7 +22,7 @@ export interface FirebasePathParam {
 export const FB_1 = {
   SESSIONS: 'SESSIONS',
   TEST_QUEUE: 'TEST_QUEUE',
-  TEST_RUNS: 'TEST_RUNS',
+  TEST_RESULTS: 'TEST_RUSULTS',
   EXPERIMENTS: 'EXPERIMENTS',
   TRACES: 'TRACES',
   AGENT_JOBS: 'AGENT_JOBS',
@@ -73,7 +73,7 @@ export interface FEmuLogBlock extends FEmuBaseObject, EmuLogBlock {};
 export interface FEmuTrace extends FEmuBaseObject, Omit<EmuTrace, "logs"> {};
 export interface FEmuTraceLog extends FEmuBaseObject, EmuTraceLog {};
 
-export interface FEmuTestRun extends FEmuBaseObject, EmuTestRun {};
+export interface FEmuTestResult extends FEmuBaseObject, EmuTestResult {};
 
 export interface FEmuExperiment extends FEmuBaseObject, Omit<EmuExperiment, "RESULTS"> {};
 export interface FEmuTestQueueJob extends FEmuBaseObject, EmuTestQueueJob {};

@@ -5,7 +5,7 @@ import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse } from "@/
 import { BOOT_CONFIG_ID, EXPERIMENT_ID, genId, JOB_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteExperiment, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadAgentState, freadBootConfig, freadEmulatorState, freadTestResults, freadTestState, freadTraceLogs, freadTracesByTestId, fwriteAgentState, fwriteEmulatorState, fwriteExperiment, fwriteJobs, fwriteTestState } from "@/shared/services/resource-locator.service";
 import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
 import { EmuExperiment, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
@@ -51,13 +51,18 @@ export const setupExperiment = async (req: Request, res: Response) => {
       for (let i = 0; i < runGroup.iterations; i++) {
         const bootConfigCopy = {
           ...experiment.baseConfig,
-          ...runGroup.baseConfigDelta,
+          agentConfig: {
+            ...experiment.baseConfig.agentConfig,
+            ...runGroup.baseConfigDelta,
+          }
         };
         const job: EmuTestQueueJob = {
           id: genId(JOB_ID),
           bootConfig: {
             ...bootConfigCopy,
             id: genId(BOOT_CONFIG_ID),
+            experimentId: experiment.id,
+            experimentRunGroupId: runGroup.id,
             testConfig: {
               ...bootConfigCopy.testConfig,
               id: genId(TEST_ID)
@@ -94,6 +99,7 @@ export const setupTest = async (req: Request, res: Response) => {
     const bootConfig: EmuBootConfig = {
       id: genId(BOOT_CONFIG_ID),
       experimentId: null,
+      experimentRunGroupId: null,
       agentConfig: req.body.agentConfig,
       testConfig: { ...req.body.testConfig, id: testId },
       goalConfig: req.body.goalConfig,
@@ -110,7 +116,6 @@ export const setupTest = async (req: Request, res: Response) => {
 }
 
 export const attemptTokenExchange = async (req: Request, res: Response) => {
-  console.log('[TEST] Attempting token exchange');
   try {
     if (!req.params.testId) {
       throw createEmuError('Must specify testId');
@@ -150,6 +155,7 @@ export const endTest = async (req: Request, res: Response) => {
   const testId = req.body.testId;
   fwriteFormattedTraceLog(`End test recieved`, req.metadata?.trace);
   try {
+    await freadTestState
     if (!testId || !req.emuSession.activeTests[testId]) {
       throw createEmuError('Must pass valid testId');
     }
@@ -262,6 +268,21 @@ export const getTraceLogs = async (req: Request, res: Response) => {
       const response: EmuGetTraceLogsResponse = { traces };
       res.send(response);
     }
+  } catch (error) {
+    fhandleErrorResponse(error, req, res);
+  }
+}
+
+export const getTestResult = async (req: Request, res: Response) => {
+  try {
+    if (!req.params.testResultId) {
+      throw createEmuError('Must specify testResultId');
+    }
+    const result = await freadTestResults([req.params.testResultId]);
+    if (!result || result.length === 0) {
+      throw createEmuError(`No test result found for id ${req.params.testResultId}`);
+    }
+    res.send({ testResult: result[0] });
   } catch (error) {
     fhandleErrorResponse(error, req, res);
   }

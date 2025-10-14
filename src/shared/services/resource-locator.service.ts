@@ -1,7 +1,7 @@
 import { firebaseService } from "@/shared/services/firebase.service";
 import { EmuAgentState, EmuBootConfig, EmuEmulatorState, EmuLogBlock, EmuTraceLog, EmuServiceName, EmuSharedTestState, EmuTestState, EmuTrace } from "@/shared/types";
-import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentJob, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuExperiment, FEmuLogBlock, FEmuSharedTestState, FEmuTestQueueJob, FEmuTestRun, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
-import { EmuTestRun } from "@/shared/types/test-run";
+import { DocumentWithId, EmuCollectionOwnership, FB_1, FB_2, FEmuAgentJob, FEmuAgentState, FEmuBaseObject, FEmuBootConfig, FEmuEmulatorState, FEmuExperiment, FEmuLogBlock, FEmuSharedTestState, FEmuTestQueueJob, FEmuTestResult, FEmuTestState, FEmuTrace, FEmuTraceLog, FirebasePathParam } from "@/shared/types/firebase";
+import { EmuTestResult } from "@/shared/types/test-result";
 import { EmuFirebaseTransactionFunction, EmuReadOptions, EmuWriteOptions } from "@/shared/types/resource-locator";
 import { formatError } from "@/shared/utils/error";
 import { EmuExperiment, EmuTestQueueJob } from "@/shared/types/experiments";
@@ -52,12 +52,13 @@ function pathParamsToString(pathParams: FirebasePathParam[]) {
 async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuReadOptions): Promise<(T | EmuFirebaseTransactionFunction)[] | null> {
   const { pathParams, where, atomic } = options;
   const objectPath = pathParamsToString(pathParams);
-  if (pathParams[-1]?.docIds) {
-    const cacheKey = generateCacheKey(pathParams);
-    if (shouldUseCache(pathParams[-1]?.collection) && FB_CACHE[cacheKey]) {
-      console.log(`[RecL] Reading object from cache for ${objectPath}`);
-      return FB_CACHE[cacheKey] as T[];
-    }
+  const lastPathParam = pathParams[pathParams.length - 1];
+  if (lastPathParam?.docIds) {
+    // const cacheKey = generateCacheKey(pathParams);
+    // if (shouldUseCache(lastPathParam?.collection) && FB_CACHE[cacheKey]) {
+    //   console.log(`[RecL] Reading object from cache for ${objectPath}`);
+    //   return FB_CACHE[cacheKey] as T[];
+    // }
   }
 
   try {
@@ -74,15 +75,15 @@ async function readObjectFromFirebase<T extends FEmuBaseObject>(options: EmuRead
 
 async function writeObjectToFirebase(options: EmuWriteOptions): Promise<boolean> {
   const { pathParams, payload } = options;
-  throwIfCantWrite(pathParams[-1]?.collection);
+  const lastPathParam = pathParams[pathParams.length - 1];
   try {
     const result = await firebaseService.write(options);
-    if (shouldUseCache(pathParams[-1]?.collection)) {
-      payload.forEach((p) => {
-        const cacheKey = generateCacheKey([...pathParams.slice(0, -1), { collection: pathParams[-1].collection, docIds: [p.id] }]);
-        FB_CACHE[cacheKey] = payload;
-      });
-    }
+    // if (shouldUseCache(lastPathParam?.collection)) {
+    //   payload.forEach((p) => {
+    //     const cacheKey = generateCacheKey([...pathParams.slice(0, -1), { collection: lastPathParam.collection, docIds: [p.id] }]);
+    //     FB_CACHE[cacheKey] = payload;
+    //   });
+    // }
     return true;
   } catch (error) {
     const objectPath = pathParamsToString(pathParams);
@@ -289,21 +290,21 @@ export async function fwriteNewTrace(traceId: string, testId: string, options: P
   });
 }
 
-export async function freadTestRuns(ids: string[], options: Partial<EmuReadOptions> = {}): Promise<EmuTestRun[] | null> {
-  const result = await readObjectFromFirebase<FEmuTestRun>({
+export async function freadTestResults(ids: string[], options: Partial<EmuReadOptions> = {}): Promise<EmuTestResult[] | null> {
+  const result = await readObjectFromFirebase<FEmuTestResult>({
     pathParams: [
-      { collection: FB_1.TEST_RUNS, docIds: ids.length > 0 ? ids : undefined },
+      { collection: FB_1.TEST_RESULTS, docIds: ids.length > 0 ? ids : undefined },
     ],
     ...options
   });
-  return result as EmuTestRun[] | null;
+  return result as EmuTestResult[] | null;
 }
-export async function fwriteTestRun(testRun: EmuTestRun, options: Partial<EmuWriteOptions> = {}) {
+export async function fwriteTestResult(testResult: EmuTestResult, options: Partial<EmuWriteOptions> = {}) {
   return writeObjectToFirebase({
     pathParams: [
-      { collection: FB_1.TEST_RUNS }
+      { collection: FB_1.TEST_RESULTS }
     ],
-    payload: [testRun],
+    payload: [testResult],
     ...options
   });
 }
@@ -381,7 +382,7 @@ export async function fattemptClaimJob(jobId: string): Promise<EmuTestQueueJob |
   }
   return null;
 }
-export async function fmarkJobComplete(jobId: string, experimentId: string | null, testRun: EmuTestRun | null): Promise<void> {
+export async function fmarkJobComplete(jobId: string, experimentId: string | null, testResult: EmuTestResult | null): Promise<void> {
   const deleteJobPromise = firebaseService.delete({
     pathParams: [
       { collection: FB_1.TEST_QUEUE, docIds: [jobId] }
@@ -409,7 +410,7 @@ export async function fmarkJobComplete(jobId: string, experimentId: string | nul
     const experimentUpdate = {
       id: experimentId,
       status: experimentComplete ? 'completed' : experiment.status,
-      completedTestRunIds: testRun ? [...experiment.completedTestRunIds, testRun.id] : experiment.completedTestRunIds,
+      completedTestRunIds: testResult ? [...experiment.completedTestRunIds, testResult.id] : experiment.completedTestRunIds,
     };
     await firebaseService.writeTransaction(
       transaction,

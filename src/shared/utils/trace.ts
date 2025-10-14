@@ -33,8 +33,8 @@ export function fwriteErrorToTraceLog(error: unknown, metadata?: EmuReqTraceMeta
     return;
   }
   if (error instanceof EmuError) {
-    fwriteFormattedTraceLog(`Emulator setup failed: ${error.message}`, metadata, 'error');
+    fwriteFormattedTraceLog(`${error.message}`, metadata, 'error');
   } else {
-    fwriteFormattedTraceLog(`Emulator setup failed: Unknown error (500)`, metadata, 'error');
+    fwriteFormattedTraceLog(`Unknown error (500)`, metadata, 'error');
   }
 }
