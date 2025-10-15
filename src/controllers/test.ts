@@ -170,6 +170,7 @@ export const endTest = async (req: Request, res: Response) => {
 
     test.agentState.status = test.agentState.status === 'error' ? test.agentState.status : 'finished';
     test.emulatorState.status = test.emulatorState.status === 'error' ? test.emulatorState.status : 'finished';
+    test.testState.status = 'finished';
 
     await fwriteTest(test);
 
