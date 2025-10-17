@@ -1,3 +1,4 @@
+import { EmuCondition } from "@/shared/conditions/types";
 import { DeepPartial, EmuAgentState, EmuBootConfig, EmuEmulatorState } from "@/shared/types";
 
 export interface EmuExperiment {
@@ -39,4 +40,5 @@ export interface EmuSetupExperimentResponse {
 export interface EmuTestSummary {
   agentState: EmuAgentState;
   emulatorState: EmuEmulatorState;
+  currentCondition: EmuCondition;
 }

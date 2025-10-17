@@ -10,6 +10,7 @@ import { fhandleErrorResponse } from "@/utils/error";
 import { EmuExperiment, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
 import { cryptoService } from "@/services/crypto.service";
 import { testQueueService } from "@/services/test-queue.service";
+import { EmuCondition } from "@/shared/conditions/types";
 
 const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 20;
 
@@ -233,12 +234,23 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       console.log(`Error fetching screenshots: ${formatError(error)}`);
     }
 
+    const currentCondition: EmuCondition = test.bootConfig.goalConfig.condition;
+    const lastHistoryIndex = Object.keys(test.testState.stateHistory).length - 1;
+    if (test.bootConfig.goalConfig.condition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryIndex]) {
+      Object.entries(test.testState.stateHistory[lastHistoryIndex].contextMemWatchValues).forEach(([key, value]) => {
+        if (currentCondition.inputs[key]) {
+          currentCondition.inputs[key].rawValue = value;
+        }
+      });
+    }
+
     const response: EmuActiveTestReponse = {
       testState: test.testState,
       agentState: test.agentState,
       agentLogs,
       emulatorState: test.emulatorState,
       bootConfig: test.bootConfig,
+      currentCondition
     };
     res.send(response);
   } catch (error) {

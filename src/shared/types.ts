@@ -57,6 +57,7 @@ export interface EmuAgentConfig {
   temperature: number;
   taskName: string;
   taskDescription: string;
+  contextHistorySize: number;
 };
 
 export interface EmuGoalConfig {
@@ -93,6 +94,7 @@ export interface EmuActiveTestReponse {
   agentState?: EmuAgentState | null;
   agentLogs?: EmuLogBlock[] | null;
   emulatorState?: EmuEmulatorState | null;
+  currentCondition?: EmuCondition;
   bootConfig: EmuBootConfig;
 };
 
