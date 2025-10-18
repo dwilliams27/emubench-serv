@@ -53,7 +53,7 @@ export const setupExperiment = async (req: Request, res: Response) => {
           ...experiment.baseConfig,
           agentConfig: {
             ...experiment.baseConfig.agentConfig,
-            ...runGroup.baseConfigDelta,
+            ...runGroup.baseConfigDelta.agentConfig,
           }
         };
         const job: EmuTestQueueJob = {
@@ -235,9 +235,11 @@ export const getEmuTestState = async (req: Request, res: Response) => {
     }
 
     const currentCondition: EmuCondition = test.bootConfig.goalConfig.condition;
-    const lastHistoryIndex = Object.keys(test.testState.stateHistory).length - 1;
-    if (test.bootConfig.goalConfig.condition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryIndex]) {
-      Object.entries(test.testState.stateHistory[lastHistoryIndex].contextMemWatchValues).forEach(([key, value]) => {
+    // Not 0 indexed
+    const lastHistoryIndex = Object.keys(test.testState.stateHistory).length;
+    const lastHistoryKey = `turn_${lastHistoryIndex}`;
+    if (test.bootConfig.goalConfig.condition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
+      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
         if (currentCondition.inputs[key]) {
           currentCondition.inputs[key].rawValue = value;
         }
