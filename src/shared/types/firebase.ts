@@ -23,7 +23,7 @@ export interface FirebasePathParam {
 export const FB_1 = {
   TESTS: 'TESTS',
   TEST_QUEUE: 'TEST_QUEUE',
-  TEST_RESULTS: 'TEST_RUSULTS',
+  TEST_RESULTS: 'TEST_RESULTS',
   EXPERIMENTS: 'EXPERIMENTS',
   TRACES: 'TRACES',
   AGENT_JOBS: 'AGENT_JOBS',
