@@ -22,6 +22,7 @@ export interface FirebasePathParam {
 // Top level firebase collections
 export const FB_1 = {
   TESTS: 'TESTS',
+  TESTS_PUBLIC: 'TESTS_PUBLIC',
   TEST_QUEUE: 'TEST_QUEUE',
   TEST_RESULTS: 'TEST_RESULTS',
   EXPERIMENTS: 'EXPERIMENTS',
