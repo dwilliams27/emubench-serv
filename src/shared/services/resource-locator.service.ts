@@ -179,15 +179,20 @@ export async function freadTest(testId: string, options: Partial<EmuReadOptions>
 function testToPublic(test: Partial<EmuTest> & { id: string }) {
   return {
     id: test.id,
-    agentState: test.agentState,
-    testState: test.testState,
-    emulatorState: test.emulatorState,
-    bootConfig: test.bootConfig
+    ...(test.agentState && { agentState: test.agentState }),
+    ...(test.testState && { testState: test.testState }),
+    ...(test.emulatorState && { emulatorState: test.emulatorState }),
+    ...(test.bootConfig && { bootConfig: test.bootConfig })
   };
 }
 function testFieldsToPublic(fields: Record<string, any>) {
-  const { sharedState, agentLogs, devLogs, ...publicFields } = fields;
-  return publicFields;
+  return Object.fromEntries(
+    Object.entries(fields).filter(([key]) =>
+      !key.startsWith('sharedState') &&
+      !key.startsWith('agentLogs') &&
+      !key.startsWith('devLogs')
+    )
+  );
 }
 export async function fwriteTest(test: Partial<EmuTest> & { id: string }, options: Partial<EmuWriteOptions> = {}) {
   await writeObjectToFirebase({
