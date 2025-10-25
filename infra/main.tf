@@ -169,7 +169,11 @@ resource "google_cloudfunctions2_function" "thumbnail_generator" {
   }
 
   depends_on = [
-    google_project_iam_member.gcs_pubsub_publisher
+    google_project_iam_member.thumbnail_function_eventarc_receiver,
+    google_project_iam_member.compute_eventarc_admin,
+    google_project_service.eventarc,
+    google_project_iam_member.gcs_pubsub_publisher,
+    google_cloud_run_v2_service_iam_member.pubsub_invoker
   ]
 }
 
@@ -202,6 +206,31 @@ resource "google_storage_bucket_object" "function_source" {
   source = data.archive_file.function_source.output_path
 }
 
+resource "google_cloud_run_v2_service_iam_member" "eventarc_invoker" {
+  project  = google_cloudfunctions2_function.thumbnail_generator.project
+  location = google_cloudfunctions2_function.thumbnail_generator.location
+  name     = google_cloudfunctions2_function.thumbnail_generator.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "eventarc_sa_invoker" {
+  project  = google_cloudfunctions2_function.thumbnail_generator.project
+  location = google_cloudfunctions2_function.thumbnail_generator.location
+  name     = google_cloudfunctions2_function.thumbnail_generator.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-eventarc.iam.gserviceaccount.com"
+}
+
+# Grant Pub/Sub service account permission to invoke the function (required for GCS events)
+resource "google_cloud_run_v2_service_iam_member" "pubsub_invoker" {
+  project  = google_cloudfunctions2_function.thumbnail_generator.project
+  location = google_cloudfunctions2_function.thumbnail_generator.location
+  name     = google_cloudfunctions2_function.thumbnail_generator.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
 # Grant the GCS service account permission to invoke (for storage events)
 resource "google_cloud_run_v2_service_iam_member" "gcs_invoker" {
   project  = google_cloudfunctions2_function.thumbnail_generator.project
@@ -209,6 +238,15 @@ resource "google_cloud_run_v2_service_iam_member" "gcs_invoker" {
   name     = google_cloudfunctions2_function.thumbnail_generator.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
+}
+
+# Grant the compute service account permission to invoke (used by Eventarc trigger)
+resource "google_cloud_run_v2_service_iam_member" "compute_invoker" {
+  project  = google_cloudfunctions2_function.thumbnail_generator.project
+  location = google_cloudfunctions2_function.thumbnail_generator.location
+  name     = google_cloudfunctions2_function.thumbnail_generator.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
 # Google Cloud Storage bucket for screenshots and session data
