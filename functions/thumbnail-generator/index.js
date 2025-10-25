@@ -10,7 +10,7 @@ const firestore = new Firestore();
 const THUMBNAIL_SIZE = 150;
 const THUMBNAIL_SUFFIX = '_t';
 
-functions.cloudEvent('generateThumbnail', async (cloudEvent) => {
+functions.cloudEvent('thumbnail-generator', async (cloudEvent) => {
   const file = cloudEvent.data;
 
   const fileBucket = file.bucket;

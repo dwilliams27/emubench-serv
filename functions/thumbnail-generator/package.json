@@ -1,7 +1,7 @@
 {
-  "name": "thumbnail-gen",
+  "name": "thumbnail-generator",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "main": "index.js",
   "dependencies": {
     "@google-cloud/functions-framework": "^3.3.0",
     "@google-cloud/storage": "^7.7.0",
