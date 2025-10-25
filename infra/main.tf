@@ -27,6 +27,10 @@ resource "google_project_service" "cloudbuild" {
   service = "cloudbuild.googleapis.com"
 }
 
+resource "google_project_service" "cloudfunctions" {
+  service = "cloudfunctions.googleapis.com"
+}
+
 resource "google_project_service" "run" {
   service = "run.googleapis.com"
 }
@@ -55,6 +59,11 @@ resource "google_service_account" "cloud_build_sa" {
   account_id   = "emubench-cloud-build-sa"
   display_name = "Emubench Cloud Build Service Account"
   description  = "Service account for Cloud Build with container registry and logging permissions"
+}
+
+resource "google_service_account" "thumbnail_function_sa" {
+  account_id   = "thumbnail-function-sa"
+  display_name = "Thumbnail Function Service Account"
 }
 
 # Grant Cloud Build service account permissions to push to Container Registry
@@ -110,6 +119,96 @@ resource "google_project_iam_member" "cloud_run_firestore_user" {
   project = var.project_id
   role    = "roles/datastore.user"
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "thumbnail_function_storage_admin" {
+  project = var.project_id
+  role    = "roles/storage.objectAdmin"
+  member  = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
+}
+
+resource "google_project_iam_member" "thumbnail_function_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
+}
+
+resource "google_cloudfunctions2_function" "thumbnail_generator" {
+  name     = "thumbnail-generator"
+  location = var.region
+
+  build_config {
+    runtime     = "nodejs20"
+    entry_point = "thumbnail-generator"
+    source {
+      storage_source {
+        bucket = google_storage_bucket_object.function_source.bucket
+        object = google_storage_bucket_object.function_source.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count               = 100
+    available_memory                 = "512M"
+    timeout_seconds                  = 60
+    service_account_email            = google_service_account.thumbnail_function_sa.email
+    ingress_settings                 = "ALLOW_INTERNAL_ONLY"
+    all_traffic_on_latest_revision   = true
+  }
+
+  event_trigger {
+    trigger_region        = "us"
+    event_type            = "google.cloud.storage.object.v1.finalized"
+    retry_policy          = "RETRY_POLICY_RETRY"
+    service_account_email = google_service_account.thumbnail_function_sa.email
+    event_filters {
+      attribute = "bucket"
+      value     = google_storage_bucket.emubench_sessions.name
+    }
+  }
+
+  depends_on = [
+    google_project_iam_member.gcs_pubsub_publisher
+  ]
+}
+
+data "archive_file" "function_source" {
+  type        = "zip"
+  output_path = "/tmp/function-source.zip"
+  source_dir  = "${path.module}/../functions/thumbnail-generator"
+}
+
+resource "google_storage_bucket" "function_source_bucket" {
+  name     = "${var.project_id}-function-source"
+  location = var.region
+  
+  uniform_bucket_level_access = true
+  
+  # Clean up old function sources after 7 days
+  lifecycle_rule {
+    condition {
+      age = 7
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+resource "google_storage_bucket_object" "function_source" {
+  name   = "functions/thumbnail-generator-${data.archive_file.function_source.output_md5}.zip"
+  bucket = google_storage_bucket.function_source_bucket.name
+  source = data.archive_file.function_source.output_path
+}
+
+# Grant the GCS service account permission to invoke (for storage events)
+resource "google_cloud_run_v2_service_iam_member" "gcs_invoker" {
+  project  = google_cloudfunctions2_function.thumbnail_generator.project
+  location = google_cloudfunctions2_function.thumbnail_generator.location
+  name     = google_cloudfunctions2_function.thumbnail_generator.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
 }
 
 # Google Cloud Storage bucket for screenshots and session data
@@ -379,6 +478,25 @@ resource "google_cloud_run_v2_service_iam_member" "serv_can_invoke_agent" {
   member   = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
+resource "google_project_iam_member" "thumbnail_function_eventarc_receiver" {
+  project = var.project_id
+  role    = "roles/eventarc.eventReceiver"
+  member  = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
+}
+
+# Grant the default compute service account permission to create triggers
+resource "google_project_iam_member" "compute_eventarc_admin" {
+  project = var.project_id
+  role    = "roles/eventarc.admin"
+  member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
+}
+
+resource "google_project_iam_member" "gcs_pubsub_publisher" {
+  project = var.project_id
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
+}
+
 resource "google_project_service" "eventarc" {
   service = "eventarc.googleapis.com"
 }
@@ -441,3 +559,5 @@ resource "google_project_iam_audit_config" "firestore_audit" {
     log_type = "DATA_WRITE"
   }
 }
+
+data "google_project" "current" {}
