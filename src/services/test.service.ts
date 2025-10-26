@@ -59,6 +59,7 @@ export class TestService {
       id: testId,
       bootConfig,
       testState,
+      screenshots: {},
       sharedState: sharedTestState,
     });
 

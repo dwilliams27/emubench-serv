@@ -59,6 +59,40 @@ functions.cloudEvent('thumbnail-generator', async (cloudEvent) => {
         cacheControl: 'public, max-age=3600',
       }
     });
+
+    // Write urls to firestore
+
+    const [fullResolutionUrl] = await originalFile.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    });
+    const [thumbnailUrl] = await thumbnailFile.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    });
+
+    const docId = fileName.substring(0, fileName.indexOf('/'));
+    const docRefBase = firestore.collection('TESTS').doc(docId);
+    const docRefPublic = firestore.collection('TESTS_PUBLIC').doc(docId);
+
+    await docRefBase.set({
+      screenshots: {
+        [`s-${fileNameWithoutExt}`]: {
+          fullResolutionUrl,
+          thumbnailUrl
+        }
+      }
+    }, { merge: true });
+    await docRefPublic.set({
+      screenshots: {
+        [`s-${fileNameWithoutExt}`]: {
+          fullResolutionUrl,
+          thumbnailUrl
+        }
+      }
+    }, { merge: true });
     
     console.log(`Thumbnail generated successfully: ${thumbnailFileName}`);
     

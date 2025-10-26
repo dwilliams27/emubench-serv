@@ -4,7 +4,7 @@ import { EmuActiveTestReponse, EmuBootConfig, EmuGetTraceLogsResponse } from "@/
 import { BOOT_CONFIG_ID, EXPERIMENT_ID, genId, JOB_ID, TEST_ID, TRACE_ID } from "@/shared/utils/id";
 import { Request, Response } from "express";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { freadAgentLogs, freadTest, freadTestResults, freadTraceLogs, freadTracesByTestId, fwriteExperiment, fwriteJobs, fwriteTest } from "@/shared/services/resource-locator.service";
+import { freadAgentLogs, freadTest, freadTestResults, freadTraceLogs, freadTracesByTestId, fwriteExperiment, fwriteJobs, fwriteTest, fwriteTestFields } from "@/shared/services/resource-locator.service";
 import { fwriteFormattedTraceLog } from "@/shared/utils/trace";
 import { fhandleErrorResponse } from "@/utils/error";
 import { EmuExperiment, EmuSetupExperimentRequest, EmuTestQueueJob } from "@/shared/types/experiments";
@@ -169,11 +169,11 @@ export const endTest = async (req: Request, res: Response) => {
       throw createEmuError('Test not found');
     }
 
-    test.agentState.status = test.agentState.status === 'error' ? test.agentState.status : 'finished';
-    test.emulatorState.status = test.emulatorState.status === 'error' ? test.emulatorState.status : 'finished';
-    test.testState.status = 'finished';
-
-    await fwriteTest(test);
+    const result = await fwriteTestFields(testId, {
+      'testState.status': 'finished',
+      'emulatorState.status': test.emulatorState.status === 'error' ? test.emulatorState.status : 'finished',
+      'agentState.status': test.agentState.status === 'error' ? test.agentState.status : 'finished'
+    });
 
     console.log(`[TEST] Test ${testId} deleted`);
     fwriteFormattedTraceLog(`Test successfuly ended`, req.metadata?.trace);
@@ -224,12 +224,8 @@ export const getEmuTestState = async (req: Request, res: Response) => {
 
     let screenshots = {};
     try {
+      // TODO: Pull from top level screenshots field of TEST
       screenshots = await getScreenshotsFromTest(testId);
-      // Update screenshots in firebase if changed
-      if (Object.keys(screenshots).length !== Object.keys(test.testState?.screenshots || {}).length) {
-        test.testState.screenshots = { ...test.testState.screenshots, ...screenshots };
-        await fwriteTest(test);
-      }
     } catch (error) {
       console.log(`Error fetching screenshots: ${formatError(error)}`);
     }
