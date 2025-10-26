@@ -51,7 +51,7 @@ functions.cloudEvent('thumbnail-generator', async (cloudEvent) => {
       })
       .toBuffer();
     
-    const thumbnailFileName = `${fileNameWithoutExt}${THUMBNAIL_SUFFIX}.webp`;
+    const thumbnailFileName = `${fileName.substring(0, fileName.lastIndexOf("/"))}/${fileNameWithoutExt}${THUMBNAIL_SUFFIX}.webp`;
     const thumbnailFile = bucket.file(thumbnailFileName);
     await thumbnailFile.save(thumbnailBuffer, {
       metadata: {
@@ -59,21 +59,6 @@ functions.cloudEvent('thumbnail-generator', async (cloudEvent) => {
         cacheControl: 'public, max-age=3600',
       }
     });
-
-    const [thumbnailUrl] = await thumbnailFile.getSignedUrl({
-      version: 'v4',
-      action: 'read',
-      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-    });
-
-    const docId = fileName.substring(0, fileName.indexOf('/')); 
-    
-    await firestore
-      .collection('TESTS_PUBLIC')
-      .doc(docId)
-      .set({
-        thumbnailUrls: Firestore.FieldValue.arrayUnion(thumbnailUrl)
-      }, { merge: true });
     
     console.log(`Thumbnail generated successfully: ${thumbnailFileName}`);
     
