@@ -59,10 +59,12 @@ functions.cloudEvent('thumbnail-generator', async (cloudEvent) => {
         cacheControl: 'public, max-age=3600',
       }
     });
-    
-    await thumbnailFile.makePublic();
-    
-    const thumbnailUrl = `https://storage.googleapis.com/${fileBucket}/${thumbnailFileName}`;
+
+    const [thumbnailUrl] = await thumbnailFile.getSignedUrl({
+      version: 'v4',
+      action: 'read',
+      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    });
 
     const docId = fileName.substring(0, fileName.indexOf('/')); 
     

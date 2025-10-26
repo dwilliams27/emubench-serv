@@ -133,6 +133,12 @@ resource "google_project_iam_member" "thumbnail_function_firestore_user" {
   member  = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
 }
 
+resource "google_service_account_iam_member" "thumbnail_function_token_creator" {
+  service_account_id = google_service_account.thumbnail_function_sa.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
+}
+
 resource "google_cloudfunctions2_function" "thumbnail_generator" {
   name     = "thumbnail-generator"
   location = var.region
@@ -172,8 +178,6 @@ resource "google_cloudfunctions2_function" "thumbnail_generator" {
     google_project_iam_member.thumbnail_function_eventarc_receiver,
     google_project_iam_member.compute_eventarc_admin,
     google_project_service.eventarc,
-    google_project_iam_member.gcs_pubsub_publisher,
-    google_cloud_run_v2_service_iam_member.pubsub_invoker
   ]
 }
 
@@ -212,23 +216,6 @@ resource "google_cloud_run_v2_service_iam_member" "eventarc_invoker" {
   name     = google_cloudfunctions2_function.thumbnail_generator.name
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.thumbnail_function_sa.email}"
-}
-
-resource "google_cloud_run_v2_service_iam_member" "eventarc_sa_invoker" {
-  project  = google_cloudfunctions2_function.thumbnail_generator.project
-  location = google_cloudfunctions2_function.thumbnail_generator.location
-  name     = google_cloudfunctions2_function.thumbnail_generator.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-eventarc.iam.gserviceaccount.com"
-}
-
-# Grant Pub/Sub service account permission to invoke the function (required for GCS events)
-resource "google_cloud_run_v2_service_iam_member" "pubsub_invoker" {
-  project  = google_cloudfunctions2_function.thumbnail_generator.project
-  location = google_cloudfunctions2_function.thumbnail_generator.location
-  name     = google_cloudfunctions2_function.thumbnail_generator.name
-  role     = "roles/run.invoker"
-  member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
 }
 
 # Grant the GCS service account permission to invoke (for storage events)
@@ -529,11 +516,6 @@ resource "google_project_iam_member" "compute_eventarc_admin" {
   member  = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
-resource "google_project_iam_member" "gcs_pubsub_publisher" {
-  project = var.project_id
-  role    = "roles/pubsub.publisher"
-  member  = "serviceAccount:service-${data.google_project.current.number}@gs-project-accounts.iam.gserviceaccount.com"
-}
 
 resource "google_project_service" "eventarc" {
   service = "eventarc.googleapis.com"
