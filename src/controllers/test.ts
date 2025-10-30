@@ -222,14 +222,6 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       throw createEmuError('Failed to read BOOT_CONFIG');
     };
 
-    let screenshots = {};
-    try {
-      // TODO: Pull from top level screenshots field of TEST
-      screenshots = await getScreenshotsFromTest(testId);
-    } catch (error) {
-      console.log(`Error fetching screenshots: ${formatError(error)}`);
-    }
-
     const currentCondition: EmuCondition = test.bootConfig.goalConfig.condition;
     // Not 0 indexed
     const lastHistoryIndex = Object.keys(test.testState.stateHistory).length;
@@ -248,6 +240,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       agentLogs,
       emulatorState: test.emulatorState,
       bootConfig: test.bootConfig,
+      screenshots: test.screenshots,
       currentCondition
     };
     res.send(response);

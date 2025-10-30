@@ -60,6 +60,7 @@ export class TestService {
       bootConfig,
       testState,
       screenshots: {},
+      result: null,
       sharedState: sharedTestState,
     });
 

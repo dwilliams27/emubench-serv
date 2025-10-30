@@ -1,4 +1,5 @@
 import { EmuCondition } from "@/shared/conditions/types";
+import { EmuScreenshot } from "@/shared/types/test";
 import { EmuTestResult } from "@/shared/types/test-result";
 
 export interface EmuLogItem {
@@ -94,6 +95,7 @@ export interface EmuActiveTestReponse {
   agentState?: EmuAgentState | null;
   agentLogs?: EmuLogBlock[] | null;
   emulatorState?: EmuEmulatorState | null;
+  screenshots?: Record<string, EmuScreenshot>;
   currentCondition?: EmuCondition;
   bootConfig: EmuBootConfig;
 };
