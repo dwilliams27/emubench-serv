@@ -11,7 +11,6 @@ export interface EmuTestResult {
 };
 
 export interface EmuTestResultData {
-  emuCondition: EmuCondition;
   conditionResult: 'passed' | 'failed' | 'error';
   conditionPrimitiveResult: EmuConditionPrimitiveResult;
   errorDetails: string;

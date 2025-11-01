@@ -12,7 +12,7 @@ import { cryptoService } from "@/services/crypto.service";
 import { testQueueService } from "@/services/test-queue.service";
 import { EmuCondition } from "@/shared/conditions/types";
 
-const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 20;
+const DEBUG_MAX_EXPERIMENT_TOTAL_TESTS = 50;
 
 export const setupExperiment = async (req: Request, res: Response) => {
   console.log('[TEST] Setting up experiment');
