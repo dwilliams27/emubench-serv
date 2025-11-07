@@ -121,5 +121,5 @@ export class TestQueueService {
   }
 }
 
-const testQueueService = new TestQueueService(10);
+const testQueueService = new TestQueueService(20);
 export { testQueueService };

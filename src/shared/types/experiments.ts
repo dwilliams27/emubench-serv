@@ -42,3 +42,15 @@ export interface EmuTestSummary {
   emulatorState: EmuEmulatorState;
   currentCondition: EmuCondition;
 }
+
+export interface EmuGroupData {
+  name: string;
+  results: boolean[];
+  color: string;
+}
+
+export interface EmuConfidenceInterval {
+  rate: number;
+  lower: number;
+  upper: number;
+}
