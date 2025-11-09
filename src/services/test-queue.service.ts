@@ -77,12 +77,12 @@ export class TestQueueService {
       if (!session) {
         session = sessionService.createSession(decryptedToken);
       }
-      session.activeTests[job.bootConfig.testConfig.id] = test;
+      session.activeTests[job.bootConfig.emulatorConfig.id] = test;
 
       let result: EmuTestResult | null = null;
       while (!result) {
         try {
-          const testResults = await freadTestResults([job.bootConfig.testConfig.id]);
+          const testResults = await freadTestResults([job.bootConfig.emulatorConfig.id]);
           if (testResults && testResults.length > 0) {
             result = testResults[0];
             break;

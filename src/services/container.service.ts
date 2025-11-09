@@ -1,6 +1,6 @@
 import { gcpService } from '@/services/gcp.service';
 import { SESSION_FUSE_PATH } from '@/types/session';
-import { EmuReqTraceMetadata, EmuTestConfig } from '@/shared/types';
+import { EmuReqTraceMetadata, EmuEmulatorConfig } from '@/shared/types';
 import { protos } from '@google-cloud/run';
 import axios from 'axios';
 import { GoogleAuth } from "google-auth-library";
@@ -8,7 +8,7 @@ import { formatError } from '@/shared/utils/error';
 import { fwriteFormattedTraceLog } from '@/shared/utils/trace';
 
 export class ContainerService {
-  async deployGame(testId: string, testConfig: EmuTestConfig, trace?: EmuReqTraceMetadata) {
+  async deployGame(testId: string, emulatorConfig: EmuEmulatorConfig, trace?: EmuReqTraceMetadata) {
     const location = 'us-central1';
     const timeoutMinutes = parseInt(process.env.CONTAINER_TIMEOUT_MINUTES || '30');
     
@@ -21,14 +21,15 @@ export class ContainerService {
           executionEnvironment: 'EXECUTION_ENVIRONMENT_GEN2',
           timeout: { seconds: timeoutMinutes * 60 },
           containers: [{
-            image: `gcr.io/${process.env.PROJECT_ID}/emubench-${testConfig.platform}-${testConfig.gameId.toLowerCase()}:latest`,
+            image: `gcr.io/${process.env.PROJECT_ID}/emubench-${emulatorConfig.platform}-${emulatorConfig.gameId.toLowerCase()}:latest`,
             ports: [{ containerPort: 8080 }],
             env: [
               { name: "DOLPHIN_EMU_USERPATH", value: `${SESSION_FUSE_PATH}/${testId}` },
-              { name: "SAVE_STATE_FILE", value: testConfig.startStateFilename },
-              { name: "MEMWATCHES", value: JSON.stringify({ contextMemWatches: testConfig.contextMemWatches || {}, endStateMemWatches: testConfig.endStateMemWatches || {} }) },
+              { name: "SAVE_STATE_FILE", value: emulatorConfig.startStateFilename },
+              { name: "MEMWATCHES", value: JSON.stringify({ contextMemWatches: emulatorConfig.contextMemWatches || {}, endStateMemWatches: emulatorConfig.endStateMemWatches || {} }) },
               { name: "TEST_ID", value: testId },
-              { name: "MODE", value: testConfig.mode },
+              { name: "MODE", value: emulatorConfig.mode },
+              { name: "USE_SHADER", value: emulatorConfig.shader },
             ],
             resources: {
               limits: {

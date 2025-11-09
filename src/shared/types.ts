@@ -29,7 +29,7 @@ export interface EmuBootConfig {
   experimentId: string | null;
   experimentRunGroupId: string | null;
   agentConfig: EmuAgentConfig;
-  testConfig: EmuTestConfig;
+  emulatorConfig: EmuEmulatorConfig;
   goalConfig: EmuGoalConfig;
 };
 
@@ -39,12 +39,13 @@ export interface EmuMemoryWatch {
   size: number;
 };
 
-export interface EmuTestConfig {
+export interface EmuEmulatorConfig {
   id: string;
   gameId: string;
   platform: 'gamecube';
   mode: 'turn-based' | 'real-time';
   startStateFilename: string;
+  shader?: string;
   contextMemWatches: Record<string, EmuMemoryWatch>;
   endStateMemWatches: Record<string, EmuMemoryWatch>;
 };

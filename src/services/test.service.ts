@@ -2,7 +2,7 @@ import { ActiveTest, SESSION_FUSE_PATH } from "@/types/session";
 import { mkdir, readdir } from "fs/promises";
 import path from "path";
 import { createEmuError, formatError } from "@/shared/utils/error";
-import { EmuBootConfig, EmuTestConfig, EmuTestState } from "@/shared/types";
+import { EmuBootConfig, EmuEmulatorConfig, EmuTestState } from "@/shared/types";
 import { fwriteAgentJobs, fwriteTest, fwriteTestFields } from "@/shared/services/resource-locator.service";
 import { AGENT_JOB_ID, AGENT_STATE_ID, EXCHANGE_TOKEN_ID, genId, SHARED_TEST_STATE_ID } from "@/shared/utils/id";
 import { containerService } from "@/services/container.service";
@@ -28,7 +28,7 @@ export class TestService {
   }
 
   async runTest(bootConfig: EmuBootConfig, authToken: string) {
-    const testId = bootConfig.testConfig.id;
+    const testId = bootConfig.emulatorConfig.id;
     if (bootConfig.agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
       throw createEmuError('Max iterations too large');
     }
@@ -65,15 +65,15 @@ export class TestService {
     });
 
     // Deploy game and agent in background
-    this.asyncEmulatorSetup(activeTest, bootConfig.testConfig);
+    this.asyncEmulatorSetup(activeTest, bootConfig.emulatorConfig);
     this.asyncAgentSetup(activeTest, authToken);
 
     return activeTest;
   }
 
-  async asyncEmulatorSetup(activeTest: ActiveTest, testConfig: EmuTestConfig) {
+  async asyncEmulatorSetup(activeTest: ActiveTest, emulatorConfig: EmuEmulatorConfig) {
     try {
-      const gameContainer = await containerService.deployGame(activeTest.id, testConfig);
+      const gameContainer = await containerService.deployGame(activeTest.id, emulatorConfig);
   
       if (!gameContainer.service.uri) {
         throw new Error('Unable to find container URL');

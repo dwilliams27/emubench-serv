@@ -63,8 +63,8 @@ export const setupExperiment = async (req: Request, res: Response) => {
             id: genId(BOOT_CONFIG_ID),
             experimentId: experiment.id,
             experimentRunGroupId: runGroup.id,
-            testConfig: {
-              ...bootConfigCopy.testConfig,
+            emulatorConfig: {
+              ...bootConfigCopy.emulatorConfig,
               id: genId(TEST_ID)
             }
           },
@@ -101,7 +101,7 @@ export const setupTest = async (req: Request, res: Response) => {
       experimentId: null,
       experimentRunGroupId: null,
       agentConfig: req.body.agentConfig,
-      testConfig: { ...req.body.testConfig, id: testId },
+      emulatorConfig: { ...req.body.emulatorConfig, id: testId },
       goalConfig: req.body.goalConfig,
     };
 
