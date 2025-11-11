@@ -54,6 +54,10 @@ export const setupExperiment = async (req: Request, res: Response) => {
           agentConfig: {
             ...experiment.baseConfig.agentConfig,
             ...runGroup.baseConfigDelta.agentConfig,
+          },
+          emulatorConfig: {
+            ...experiment.baseConfig.emulatorConfig,
+            ...runGroup.baseConfigDelta.emulatorConfig,
           }
         };
         const job: EmuTestQueueJob = {
@@ -63,6 +67,7 @@ export const setupExperiment = async (req: Request, res: Response) => {
             id: genId(BOOT_CONFIG_ID),
             experimentId: experiment.id,
             experimentRunGroupId: runGroup.id,
+            // @ts-expect-error Its fine
             emulatorConfig: {
               ...bootConfigCopy.emulatorConfig,
               id: genId(TEST_ID)
