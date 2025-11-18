@@ -36,6 +36,14 @@ export const EmuOperationNameToFunctionMap: Record<string, EmuConditionOperation
     const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
     return lhsResult === rhsResult;
   },
+  '!=': (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for == operation');
+    }
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
+    return lhsResult !== rhsResult;
+  },
   '&&': (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for && operation');
@@ -125,6 +133,13 @@ export const emuMultiplyOperationFactory: () => EmuConditionOperation = () => ({
 export const emuEqualsOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: '==',
+  hasLeftOperand: true,
+  hasRightOperand: true,
+});
+
+export const emuNotEqualsOperationFactory: () => EmuConditionOperation = () => ({
+  id: genId(EMU_OPERATION_ID),
+  name: '!=',
   hasLeftOperand: true,
   hasRightOperand: true,
 });

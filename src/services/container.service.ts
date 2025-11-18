@@ -39,7 +39,7 @@ export class ContainerService {
             },
           }],
           scaling: {
-            minInstanceCount: 1,
+            minInstanceCount: 0,
             maxInstanceCount: 1
           }
         },
