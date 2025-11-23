@@ -1,0 +1,13 @@
+{
+  "name": "job-killer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
+    "@google-cloud/run": "^2.1.0",
+    "@google-cloud/firestore": "^7.1.0"
+  },
+  "engines": {
+    "node": "20"
+  }
+}

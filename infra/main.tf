@@ -39,6 +39,14 @@ resource "google_project_service" "vpcaccess" {
   service = "vpcaccess.googleapis.com"
 }
 
+resource "google_project_service" "cloudscheduler" {
+  service = "cloudscheduler.googleapis.com"
+}
+
+resource "google_project_service" "pubsub" {
+  service = "pubsub.googleapis.com"
+}
+
 data "google_client_config" "default" {}
 
 # Google Service Account for Cloud Run service
@@ -260,19 +268,141 @@ resource "google_cloud_run_v2_service_iam_member" "compute_invoker" {
   member   = "serviceAccount:${data.google_project.current.number}-compute@developer.gserviceaccount.com"
 }
 
+# Job-Killer Cloud Function - Cleanup stale Cloud Run services
+
+# Service Account for job-killer function
+resource "google_service_account" "job_killer_sa" {
+  account_id   = "job-killer-sa"
+  display_name = "Job Killer Function Service Account"
+  description  = "Service account for job-killer function to clean up stale Cloud Run services"
+}
+
+# Grant job-killer permission to list and delete Cloud Run services
+resource "google_project_iam_member" "job_killer_run_developer" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.job_killer_sa.email}"
+}
+
+# Grant job-killer permission to update Firestore test records
+resource "google_project_iam_member" "job_killer_firestore_user" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${google_service_account.job_killer_sa.email}"
+}
+
+# Pub/Sub topic for Cloud Scheduler to trigger job-killer
+resource "google_pubsub_topic" "job_killer_topic" {
+  name = "job-killer-trigger"
+}
+
+# Archive job-killer function source
+data "archive_file" "job_killer_source" {
+  type        = "zip"
+  output_path = "/tmp/job-killer-source.zip"
+  source_dir  = "${path.module}/../functions/job-killer"
+}
+
+# Upload job-killer function source to GCS
+resource "google_storage_bucket_object" "job_killer_source" {
+  name   = "functions/job-killer-${data.archive_file.job_killer_source.output_md5}.zip"
+  bucket = google_storage_bucket.function_source_bucket.name
+  source = data.archive_file.job_killer_source.output_path
+}
+
+# Job-killer Cloud Function
+resource "google_cloudfunctions2_function" "job_killer" {
+  name     = "job-killer"
+  location = var.region
+
+  build_config {
+    runtime     = "nodejs20"
+    entry_point = "job-killer"
+    source {
+      storage_source {
+        bucket = google_storage_bucket_object.job_killer_source.bucket
+        object = google_storage_bucket_object.job_killer_source.name
+      }
+    }
+  }
+
+  service_config {
+    max_instance_count               = 1
+    available_memory                 = "512M"
+    timeout_seconds                  = 540  # 9 minutes - plenty of time for cleanup
+    service_account_email            = google_service_account.job_killer_sa.email
+    ingress_settings                 = "ALLOW_INTERNAL_ONLY"
+    all_traffic_on_latest_revision   = true
+
+    environment_variables = {
+      PROJECT_ID               = var.project_id
+      CLEANUP_TIMEOUT_MINUTES  = "45"
+    }
+  }
+
+  event_trigger {
+    trigger_region        = var.region
+    event_type            = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic          = google_pubsub_topic.job_killer_topic.id
+    retry_policy          = "RETRY_POLICY_DO_NOT_RETRY"
+    service_account_email = google_service_account.job_killer_sa.email
+  }
+
+  depends_on = [
+    google_project_service.cloudfunctions,
+    google_project_service.eventarc,
+  ]
+}
+
+# Cloud Scheduler job to trigger job-killer every hour
+resource "google_cloud_scheduler_job" "job_killer_schedule" {
+  name             = "job-killer-hourly"
+  description      = "Trigger job-killer function every hour to clean up stale Cloud Run services"
+  schedule         = "0 * * * *"  # Every hour at minute 0
+  time_zone        = "America/Los_Angeles"
+  attempt_deadline = "320s"
+  region           = var.region
+
+  retry_config {
+    retry_count = 1
+  }
+
+  pubsub_target {
+    topic_name = google_pubsub_topic.job_killer_topic.id
+    data       = base64encode("{\"trigger\": \"scheduled\"}")
+  }
+}
+
+# Grant Cloud Scheduler permission to publish to the Pub/Sub topic
+resource "google_pubsub_topic_iam_member" "scheduler_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.job_killer_topic.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+# Grant Pub/Sub service account permission to invoke the function
+resource "google_cloud_run_v2_service_iam_member" "job_killer_pubsub_invoker" {
+  project  = google_cloudfunctions2_function.job_killer.project
+  location = google_cloudfunctions2_function.job_killer.location
+  name     = google_cloudfunctions2_function.job_killer.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:service-${data.google_project.current.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
 # Google Cloud Storage bucket for screenshots and session data
 resource "google_storage_bucket" "emubench_sessions" {
   name     = "emubench-sessions"
   location = "US"
-  
+
   # Enable uniform bucket-level access for better security
   uniform_bucket_level_access = true
-  
+
   # Prevent accidental deletion
   lifecycle {
     prevent_destroy = true
   }
-  
+
   # Enable versioning for important data
   versioning {
     enabled = true
