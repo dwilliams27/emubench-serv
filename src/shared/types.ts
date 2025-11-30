@@ -82,6 +82,10 @@ export interface EmuEmulatorState {
 
 export interface EmuAgentState {
   id: string;
+  inputTokenCount: number;
+  outputTokenCount: number;
+  reasoningTokenCount: number;
+  totalTokenCount: number;
   status: 'booting' | 'running' | 'finished' | 'error';
 };
 
