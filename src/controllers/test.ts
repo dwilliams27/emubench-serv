@@ -60,17 +60,18 @@ export const setupExperiment = async (req: Request, res: Response) => {
             ...runGroup.baseConfigDelta.emulatorConfig,
           }
         };
+        const testId = genId(TEST_ID);
         const job: EmuTestQueueJob = {
           id: genId(JOB_ID),
           bootConfig: {
             ...bootConfigCopy,
-            id: genId(BOOT_CONFIG_ID),
+            id: testId,
             experimentId: experiment.id,
             experimentRunGroupId: runGroup.id,
             // @ts-expect-error Its fine
             emulatorConfig: {
               ...bootConfigCopy.emulatorConfig,
-              id: genId(TEST_ID)
+              id: testId
             }
           },
           encryptedUserToken: cryptoService.encrypt(req.headers.authorization!.substring(7)),
@@ -102,7 +103,7 @@ export const setupTest = async (req: Request, res: Response) => {
 
   try {
     const bootConfig: EmuBootConfig = {
-      id: genId(BOOT_CONFIG_ID),
+      id: testId,
       experimentId: null,
       experimentRunGroupId: null,
       agentConfig: req.body.agentConfig,
@@ -227,14 +228,23 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       throw createEmuError('Failed to read BOOT_CONFIG');
     };
 
-    const currentCondition: EmuCondition = test.bootConfig.goalConfig.condition;
+    const currentSuccessCondition = test.bootConfig.goalConfig.successCondition;
+    const currentFailCondition = test.bootConfig.goalConfig.failCondition;
     // Not 0 indexed
     const lastHistoryIndex = Object.keys(test.testState.stateHistory).length;
     const lastHistoryKey = `turn_${lastHistoryIndex}`;
-    if (test.bootConfig.goalConfig.condition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
+    
+    if (currentSuccessCondition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
       Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
-        if (currentCondition.inputs[key]) {
-          currentCondition.inputs[key].rawValue = value;
+        if (currentSuccessCondition.inputs[key]) {
+          currentSuccessCondition.inputs[key].rawValue = value;
+        }
+      });
+    }
+    if (currentFailCondition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
+      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
+        if (currentFailCondition.inputs[key]) {
+          currentFailCondition.inputs[key].rawValue = value;
         }
       });
     }
@@ -246,7 +256,8 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       emulatorState: test.emulatorState,
       bootConfig: test.bootConfig,
       screenshots: test.screenshots,
-      currentCondition
+      currentSuccessCondition,
+      currentFailCondition
     };
     res.send(response);
   } catch (error) {

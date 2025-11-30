@@ -28,7 +28,7 @@ export class TestService {
   }
 
   async runTest(bootConfig: EmuBootConfig, authToken: string) {
-    const testId = bootConfig.emulatorConfig.id;
+    const testId = bootConfig.id;
     if (bootConfig.agentConfig.maxIterations > DEBUG_MAX_ITERATIONS) {
       throw createEmuError('Max iterations too large');
     }
