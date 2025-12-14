@@ -13,6 +13,7 @@ export interface EmuTestResult {
 export interface EmuTestResultData {
   conditionResult: 'passed' | 'failed' | 'error';
   conditionPrimitiveResult: EmuConditionPrimitiveResult;
+  reward: number | null;
   errorDetails: string;
 }
 

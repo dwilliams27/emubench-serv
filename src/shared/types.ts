@@ -61,11 +61,14 @@ export interface EmuAgentConfig {
   taskDescription: string;
   turnMemoryLength: number;
   longTermMemory: boolean;
+  multiInput: boolean;
 };
 
 export interface EmuGoalConfig {
   successCondition?: EmuCondition;
   failCondition?: EmuCondition;
+  rewardFunction?: EmuCondition;
+  rewardDescription?: string;
 };
 
 export interface EmuTestState {
@@ -110,6 +113,7 @@ export interface EmuActiveTestReponse {
   screenshots?: Record<string, EmuScreenshot>;
   currentSuccessCondition?: EmuCondition;
   currentFailCondition?: EmuCondition;
+  currentRewardFunction?: EmuCondition;
   bootConfig: EmuBootConfig;
 };
 

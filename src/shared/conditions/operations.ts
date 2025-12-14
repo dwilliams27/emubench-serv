@@ -189,6 +189,6 @@ export const emuSquareOperationFactory: () => EmuConditionOperation = () => ({
 export const emuLeftIdentityOperationFactory: () => EmuConditionOperation = () => ({
   id: genId(EMU_OPERATION_ID),
   name: 'identity',
-  hasLeftOperand: false,
+  hasLeftOperand: true,
   hasRightOperand: false,
 });
