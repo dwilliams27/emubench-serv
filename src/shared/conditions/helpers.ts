@@ -53,11 +53,21 @@ export function hexToInt(hexString: string): number {
 }
 
 /**
- * Converts an 8-character hex string to a 32-bit unsigned integer
+ * Converts a 2/4/6/8-character hex string to a 32-bit unsigned integer
  * Uses big-endian byte order (GameCube standard)
+ * Shorter hex strings are zero-padded on the left (e.g., "0A" -> 10)
  */
 export function hexToUint(hexString: string): number {
-  const cleanHex = validate8CharHex(hexString);
+  // Remove any whitespace and convert to uppercase
+  const cleanHex = hexString.replace(/\s/g, '').toUpperCase();
+  
+  // Validate hex string (2, 4, 6, or 8 characters)
+  if (!/^[0-9A-F]{2}$|^[0-9A-F]{4}$|^[0-9A-F]{6}$|^[0-9A-F]{8}$/.test(cleanHex)) {
+    throw new Error('Invalid hex string: must be 2, 4, 6, or 8 hexadecimal characters');
+  }
+  
+  // Pad to 8 characters (zero-pad on the left)
+  const paddedHex = cleanHex.padStart(8, '0');
   
   // Convert hex string to bytes and create DataView
   const buffer = new ArrayBuffer(4);
@@ -65,7 +75,7 @@ export function hexToUint(hexString: string): number {
   
   // Parse each byte pair and set in buffer
   for (let i = 0; i < 4; i++) {
-    const byte = parseInt(cleanHex.substring(i * 2, i * 2 + 2), 16);
+    const byte = parseInt(paddedHex.substring(i * 2, i * 2 + 2), 16);
     view.setUint8(i, byte);
   }
   

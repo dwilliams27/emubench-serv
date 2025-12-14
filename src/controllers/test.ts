@@ -230,6 +230,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
 
     const currentSuccessCondition = test.bootConfig.goalConfig.successCondition;
     const currentFailCondition = test.bootConfig.goalConfig.failCondition;
+    const currentRewardFunction = test.bootConfig.goalConfig.rewardFunction;
     // Not 0 indexed
     const lastHistoryIndex = Object.keys(test.testState.stateHistory).length;
     const lastHistoryKey = `turn_${lastHistoryIndex}`;
@@ -248,6 +249,13 @@ export const getEmuTestState = async (req: Request, res: Response) => {
         }
       });
     }
+    if (currentRewardFunction && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
+      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
+        if (currentRewardFunction.inputs[key]) {
+          currentRewardFunction.inputs[key].rawValue = value;
+        }
+      });
+    }
 
     const response: EmuActiveTestReponse = {
       testState: test.testState,
@@ -257,7 +265,8 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       bootConfig: test.bootConfig,
       screenshots: test.screenshots,
       currentSuccessCondition,
-      currentFailCondition
+      currentFailCondition,
+      currentRewardFunction
     };
     res.send(response);
   } catch (error) {
