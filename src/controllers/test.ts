@@ -35,6 +35,7 @@ export const setupExperiment = async (req: Request, res: Response) => {
         ...body.experimentConfig.baseConfig,
         experimentId,
       },
+      numericalResult: body.experimentConfig.numericalResult,
       totalTestRuns: body.experimentConfig.totalTestRuns,
       runGroups: body.experimentConfig.runGroups || [],
       status: "running",
@@ -264,6 +265,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       emulatorState: test.emulatorState,
       bootConfig: test.bootConfig,
       screenshots: test.screenshots,
+      result: test.result,
       currentSuccessCondition,
       currentFailCondition,
       currentRewardFunction

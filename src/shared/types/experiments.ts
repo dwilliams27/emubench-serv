@@ -5,6 +5,7 @@ export interface EmuExperiment {
   id: string;
   name: string;
   description: string;
+  numericalResult: boolean;
   baseConfig: EmuBootConfig;
   totalTestRuns: number;
   status: 'pending' | 'running' | 'error' | 'completed';
@@ -46,6 +47,7 @@ export interface EmuTestSummary {
 export interface EmuGroupData {
   name: string;
   results: boolean[];
+  rewards: number[];
   color: string;
 }
 
