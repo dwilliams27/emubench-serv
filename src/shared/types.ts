@@ -96,8 +96,8 @@ export interface EmuAgentState {
 };
 
 export interface EmuAgentMemory {
-  longTermNotes: string;
-}
+  longTermNotes: string[];
+};
 
 export interface EmuSharedTestState {
   id: string;
@@ -115,6 +115,7 @@ export interface EmuActiveTestReponse {
   currentSuccessCondition?: EmuCondition;
   currentFailCondition?: EmuCondition;
   currentRewardFunction?: EmuCondition;
+  memories: string[];
   bootConfig: EmuBootConfig;
 };
 

@@ -266,6 +266,7 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       bootConfig: test.bootConfig,
       screenshots: test.screenshots,
       result: test.result,
+      memories: test.agentState.memory?.longTermNotes || [],
       currentSuccessCondition,
       currentFailCondition,
       currentRewardFunction

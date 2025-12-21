@@ -17,6 +17,17 @@ export const EmuOperationNameToFunctionMap: Record<string, EmuConditionOperation
     }
     throw new Error('Invalid operands for +');
   },
+  '-': (inputs, operands) => {
+    if (operands.lhs === undefined || operands.rhs === undefined) {
+      throw new Error('2 operands required for - operation');
+    }
+    const lhsResult = emuEvaluateOperand(inputs, operands.lhs);
+    const rhsResult = emuEvaluateOperand(inputs, operands.rhs);
+    if (typeof lhsResult === 'number' && typeof rhsResult === 'number') {
+      return lhsResult - rhsResult;
+    }
+    throw new Error('Invalid operands for -');
+  },
   '*': (inputs, operands) => {
     if (operands.lhs === undefined || operands.rhs === undefined) {
       throw new Error('2 operands required for * operation');
