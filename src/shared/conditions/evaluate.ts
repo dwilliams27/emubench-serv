@@ -19,7 +19,9 @@ function emuFlattenConditionHelper(inputs: EmuConditionInputSet, currentNode: Em
     if (currentNode.conditionPart.lhs) {
       currentResult = emuFlattenConditionHelper(inputs, currentNode.conditionPart.lhs, currentResult);
     }
-    currentResult.push({ conditionPart: { operation: currentNode.conditionPart.operation } });
+    if (currentNode.conditionPart.operation.name !== "identity") {
+      currentResult.push({ conditionPart: { operation: currentNode.conditionPart.operation } });
+    }
     if (currentNode.conditionPart.rhs) {
       currentResult = emuFlattenConditionHelper(inputs, currentNode.conditionPart.rhs, currentResult);
     }

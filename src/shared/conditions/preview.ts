@@ -22,6 +22,11 @@ function partToPreview(part: EmuConditionPart): string {
     return `${op} ${rhs}`;
   }
 
+  // Identity
+  if (part.operation.hasLeftOperand && !part.operation.hasRightOperand) {
+    return `${lhs}`;
+  }
+
   // Handle binary operations
   if (part.operation.hasLeftOperand && part.operation.hasRightOperand) {
     return `${lhs} ${op} ${rhs}`;
