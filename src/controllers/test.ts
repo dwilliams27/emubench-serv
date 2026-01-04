@@ -229,30 +229,33 @@ export const getEmuTestState = async (req: Request, res: Response) => {
       throw createEmuError('Failed to read BOOT_CONFIG');
     };
 
-    const currentSuccessCondition = test.bootConfig.goalConfig.successCondition;
-    const currentFailCondition = test.bootConfig.goalConfig.failCondition;
-    const currentRewardFunction = test.bootConfig.goalConfig.rewardFunction;
-    // Not 0 indexed
-    const lastHistoryIndex = Object.keys(test.testState.stateHistory).length;
-    const lastHistoryKey = `turn_${lastHistoryIndex}`;
+    const currentSuccessCondition = test.bootConfig.goalConfig?.successCondition;
+    const currentFailCondition = test.bootConfig.goalConfig?.failCondition;
+    const currentRewardFunction = test.bootConfig.goalConfig?.rewardFunction;
     
-    if (currentSuccessCondition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
-      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
-        if (currentSuccessCondition.inputs[key]) {
+    // Not 0 indexed
+    const lastHistoryIndex = Object.keys(test.testState?.stateHistory || {}).length;
+    const lastHistoryKey = `turn_${lastHistoryIndex}`;
+    const lastHistoryEntry = test.testState?.stateHistory?.[lastHistoryKey];
+    const contextMemWatchValues = lastHistoryEntry?.contextMemWatchValues;
+    
+    if (currentSuccessCondition && contextMemWatchValues) {
+      Object.entries(contextMemWatchValues).forEach(([key, value]) => {
+        if (currentSuccessCondition.inputs?.[key]) {
           currentSuccessCondition.inputs[key].rawValue = value;
         }
       });
     }
-    if (currentFailCondition && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
-      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
-        if (currentFailCondition.inputs[key]) {
+    if (currentFailCondition && contextMemWatchValues) {
+      Object.entries(contextMemWatchValues).forEach(([key, value]) => {
+        if (currentFailCondition.inputs?.[key]) {
           currentFailCondition.inputs[key].rawValue = value;
         }
       });
     }
-    if (currentRewardFunction && lastHistoryIndex >= 0 && test.testState.stateHistory[lastHistoryKey]) {
-      Object.entries(test.testState.stateHistory[lastHistoryKey].contextMemWatchValues).forEach(([key, value]) => {
-        if (currentRewardFunction.inputs[key]) {
+    if (currentRewardFunction && contextMemWatchValues) {
+      Object.entries(contextMemWatchValues).forEach(([key, value]) => {
+        if (currentRewardFunction.inputs?.[key]) {
           currentRewardFunction.inputs[key].rawValue = value;
         }
       });
